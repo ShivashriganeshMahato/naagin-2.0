@@ -1,9 +1,11 @@
 var Vector2 = Phaser.Math.Vector2;
 
+var GRID_SIZE = 32;
+
 var config = {
     type: Phaser.AUTO,
-    width: 700,
-    height: 700,
+    width: 704,
+    height: 704,
     physics: {
         default: 'arcade',
         arcade: {}
@@ -24,9 +26,13 @@ function Body(initX, initY, initVx, initVy, sprite) {
         this.body.setVelocity(this.vel.x, this.vel.y);
     }
 }
+function Food(sprite){
+  this.body = new Body();
+
+}
 
 function Snake(sprite) {
-    this.bodies = [new Body(25, 25, 0, 0, sprite), new Body(75, 25, 0, 0, sprite), new Body(125, 25, 0, 0, sprite), new Body(175, 25, 0, 0, sprite), new Body(225, 25, 0, 0, sprite), new Body(275, 25, 0, 0, sprite), new Body(325, 25, 0, 0, sprite), new Body(375, 25, 0, 0, sprite), new Body(425, 25, 0, 0, sprite)];
+    this.bodies = [new Body(GRID_SIZE / 2, GRID_SIZE / 2, 0, 0, sprite)];
     this.timer = 0;
     this.direction = null;
     this.directions = {
@@ -79,11 +85,11 @@ function Snake(sprite) {
         })
     }
     this.update = function(phaser) {
+        let head = this.bodies[this.bodies.length - 1];
         if (this.direction !== null) {
             if (this.timer >= this.PERIOD) {
-                let head = this.bodies[this.bodies.length - 1];
-                let newBody = new Body(head.pos.x + 50 * this.direction.x,
-                    head.pos.y + 50 * this.direction.y, 0, 0, sprite);
+                let newBody = new Body(head.pos.x + GRID_SIZE * this.direction.x,
+                    head.pos.y + GRID_SIZE * this.direction.y, 0, 0, sprite);
                 newBody.init(phaser);
                 this.bodies.push(newBody);
                 this.bodies.splice(0, 1)[0].body.destroy();
@@ -91,18 +97,25 @@ function Snake(sprite) {
             } else {
                 this.timer++;
             }
+            if(head.pos.x <= -1 || head.pos.x >= 705 || head.pos.y <= -1 || head.pos.y >= 705){
+              murder();
+            }
         }
     }
 }
 
 var game = new Phaser.Game(config);
 var snake;
+var food;
+function murder(){
+  console.log('hi');
+}
 
 function preload() {
     this.load.setBaseURL('http://labs.phaser.io');
 
     this.load.image('sky', 'assets/skies/underwater1.png');
-    this.load.image('snake', 'assets/sprites/50x50-white.png');
+    this.load.image('snake', 'assets/sprites/32x32.png');
 }
 
 function create() {
@@ -110,6 +123,7 @@ function create() {
 
     snake = new Snake('snake');
     snake.init(this);
+    food = new Food('food');
 }
 
 function update() {
