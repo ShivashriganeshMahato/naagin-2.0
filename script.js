@@ -144,6 +144,12 @@ function Snake(sprite) {
             }
         }
     }
+    this.addBody = function(phaser) {
+        let tail = this.bodies[0];
+        let newBody = new Body(tail.pos.x, tail.pos.y, 0, 0, sprite);
+        newBody.init(phaser);
+        this.bodies.unshift(newBody);
+    }
 }
 
 var game = new Phaser.Game(config);
