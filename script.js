@@ -83,7 +83,7 @@ function Snake(sprite) {
         up: ["keydown_W", "keydown_up"],
         down: ["keydown_S", "keydown_down"]
     };
-    this.PERIOD = 10;
+    this.PERIOD = 7;
     this.bindKey = function(phaser, name, callback) {
         // Bind all key codes to an action
         this.keys[name].forEach(key => {
@@ -122,6 +122,9 @@ function Snake(sprite) {
                 snake.direction = snake.directions.DOWN;
             }
         })
+        phaser.input.keyboard.on("keydown_B", function () {
+            snake.addBody(phaser);
+        });
     }
     this.update = function(phaser) {
         let head = this.bodies[this.bodies.length - 1];
@@ -146,7 +149,7 @@ function Snake(sprite) {
     }
     this.addBody = function(phaser) {
         let tail = this.bodies[0];
-        let newBody = new Body(tail.pos.x, tail.pos.y, 0, 0, sprite);
+        let newBody = new Body(tail.coors.x, tail.coors.y, 0, 0, sprite);
         newBody.init(phaser);
         this.bodies.unshift(newBody);
     }
