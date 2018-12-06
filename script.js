@@ -5,7 +5,7 @@ var R = C = 22; // Rows, Columns
 
 // Generates random number between a and b, inclusive
 function random(a, b) {
-    return Math.floor(Math.random() * 6) + 1;
+    return Math.floor(Math.random() * b) + a;
 }
 
 var config = {
@@ -52,12 +52,13 @@ Portal.prototype.update = function(phaser, snake) {
         S = GRID_SIZE / 2;
 
     // Check collision
-    if (h.x + S > b.x - S && h.x - S < b.x + S && h.y + S > b.y - S &&
-        h.y - S < b.y + S) {
+    if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
+        h.y + S > b.y - S && h.y - S < b.y + S) {
         // Teleport head, body will follow
         head.coors.set(this.to.x, this.to.y);
         head.pos.set(GRID_SIZE / 2 + GRID_SIZE * this.to.x,
             GRID_SIZE / 2 + GRID_SIZE * this.to.y);
+        snake.isTeleporting = true;
     }
 };
 
@@ -68,6 +69,7 @@ function Food(sprite) {
 function Snake(sprite) {
     this.bodies = [new Body(0, 0, 0, 0, sprite), new Body(1, 0, 0, 0, sprite), new Body(2, 0, 0, 0, sprite)];
     this.timer = 0;
+    this.isTeleporting = false;
     this.direction = null;
     this.directions = {
         LEFT: new Vector2(-1, 0),
@@ -131,6 +133,7 @@ function Snake(sprite) {
                 newBody.init(phaser);
                 this.bodies.push(newBody);
                 this.bodies.splice(0, 1)[0].body.destroy();
+                this.isTeleporting = false;
                 this.timer = 0;
             } else {
                 this.timer++;
@@ -144,7 +147,7 @@ function Snake(sprite) {
 }
 
 var game = new Phaser.Game(config);
-var snake, food, portal;
+var snake, food, portal, endPortal;
 
 function murder() {
     console.log('hi');
@@ -167,15 +170,19 @@ function create() {
 
     let portalX = random(0, C - 1), portalY = random(0, R - 1),
         portalTX = random(0, C - 1), portalTY = random(0, R - 1);
-    while (portalX === portalTX && portalY === portalTY) {
+    while (portalX === portalTX && portalY === portalTY ||
+        Math.sqrt(Math.pow(portalX - portalTX, 2) + Math.pow(portalY - portalTY, 2)) < 8) {
         portalTX = random(0, C - 1);
         portalTY = random(0, R - 1);
     }
     portal = new Portal(portalX, portalY, portalTX, portalTY, 'snake');
     portal.init(this, snake);
+    endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'snake');
+    endPortal.init(this, snake);
 }
 
 function update() {
     snake.update(this);
     portal.update(this, snake);
+    endPortal.update(this, snake);
 }
