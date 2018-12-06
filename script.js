@@ -1,11 +1,17 @@
 var Vector2 = Phaser.Math.Vector2;
 
 var GRID_SIZE = 32;
+var R = C = 22; // Rows, Columns
+
+// Generates random number between a and b, inclusive
+function random(a, b) {
+    return Math.floor(Math.random() * b) + a;
+}
 
 var config = {
     type: Phaser.AUTO,
-    width: 704,
-    height: 704,
+    width: C * GRID_SIZE,
+    height: R * GRID_SIZE,
     physics: {
         default: 'arcade',
         arcade: {}
@@ -17,23 +23,53 @@ var config = {
     }
 };
 
+// initX and initY should be grid coordinates
 function Body(initX, initY, initVx, initVy, sprite) {
-    this.pos = new Vector2(initX, initY);
+    this.coors = new Vector2(initX, initY);
+    // Interpolate grid coordinates onto screen
+    this.pos = new Vector2(GRID_SIZE / 2 + GRID_SIZE * initX,
+        GRID_SIZE / 2 + GRID_SIZE * initY);
     this.vel = new Vector2(initVx, initVy);
     this.sprite = sprite;
-    this.init = function(phaser) {
-        this.body = phaser.physics.add.image(this.pos.x, this.pos.y, this.sprite);
-        this.body.setVelocity(this.vel.x, this.vel.y);
-    }
 }
-function Food(sprite){
-  this.body = new Body();
+Body.prototype.init = function(phaser) {
+    // Create and add body to world
+    this.body = phaser.physics.add.image(this.pos.x, this.pos.y, this.sprite);
+    this.body.setVelocity(this.vel.x, this.vel.y);
+}
 
+function Portal(x, y, toX, toY, sprite) {
+    // Call Body's constructor
+    Body.call(this, x, y, 0, 0, sprite);
+    this.to = new Vector2(toX, toY);
+}
+// Make Portal a child of Body
+Portal.prototype = Object.create(Body.prototype);
+Portal.prototype.update = function(phaser, snake) {
+    let head = snake.bodies[snake.bodies.length - 1],
+        h = head.pos,
+        b = this.body,
+        S = GRID_SIZE / 2;
+
+    // Check collision
+    if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
+        h.y + S > b.y - S && h.y - S < b.y + S) {
+        // Teleport head, body will follow
+        head.coors.set(this.to.x, this.to.y);
+        head.pos.set(GRID_SIZE / 2 + GRID_SIZE * this.to.x,
+            GRID_SIZE / 2 + GRID_SIZE * this.to.y);
+        snake.isTeleporting = true;
+    }
+};
+
+function Food(sprite) {
+    this.body = new Body();
 }
 
 function Snake(sprite) {
-    this.bodies = [new Body(GRID_SIZE / 2, GRID_SIZE / 2, 0, 0, sprite)];
+    this.bodies = [new Body(0, 0, 0, 0, sprite), new Body(1, 0, 0, 0, sprite), new Body(2, 0, 0, 0, sprite)];
     this.timer = 0;
+    this.isTeleporting = false;
     this.direction = null;
     this.directions = {
         LEFT: new Vector2(-1, 0),
@@ -49,6 +85,7 @@ function Snake(sprite) {
     };
     this.PERIOD = 10;
     this.bindKey = function(phaser, name, callback) {
+        // Bind all key codes to an action
         this.keys[name].forEach(key => {
             phaser.input.keyboard.on(key, callback);
         });
@@ -59,6 +96,8 @@ function Snake(sprite) {
         });
 
         let snake = this;
+
+        // Delegate movement if possible in certain direction
         function canChangeDirection(oppositeDir) {
             return snake.direction === null || snake.bodies.length <= 1 ||
                 !snake.direction.equals(oppositeDir);
@@ -88,27 +127,30 @@ function Snake(sprite) {
         let head = this.bodies[this.bodies.length - 1];
         if (this.direction !== null) {
             if (this.timer >= this.PERIOD) {
-                let newBody = new Body(head.pos.x + GRID_SIZE * this.direction.x,
-                    head.pos.y + GRID_SIZE * this.direction.y, 0, 0, sprite);
+                // Every this.PERIOD frames, move snake by moving tail to desired new head position
+                let newBody = new Body(head.coors.x + this.direction.x,
+                    head.coors.y + this.direction.y, 0, 0, sprite);
                 newBody.init(phaser);
                 this.bodies.push(newBody);
                 this.bodies.splice(0, 1)[0].body.destroy();
+                this.isTeleporting = false;
                 this.timer = 0;
             } else {
                 this.timer++;
             }
-            if(head.pos.x <= -1 || head.pos.x >= 705 || head.pos.y <= -1 || head.pos.y >= 705){
-              murder();
+            // Kill if out of bounds
+            if (head.pos.x <= -1 || head.pos.x >= 705 || head.pos.y <= -1 || head.pos.y >= 705) {
+                murder();
             }
         }
     }
 }
 
 var game = new Phaser.Game(config);
-var snake;
-var food;
-function murder(){
-  console.log('hi');
+var snake, food, portal, endPortal;
+
+function murder() {
+    console.log('hi');
 }
 
 function preload() {
@@ -123,9 +165,24 @@ function create() {
 
     snake = new Snake('snake');
     snake.init(this);
+
     food = new Food('food');
+
+    let portalX = random(0, C - 1), portalY = random(0, R - 1),
+        portalTX = random(0, C - 1), portalTY = random(0, R - 1);
+    while (portalX === portalTX && portalY === portalTY ||
+        Math.sqrt(Math.pow(portalX - portalTX, 2) + Math.pow(portalY - portalTY, 2)) < 8) {
+        portalTX = random(0, C - 1);
+        portalTY = random(0, R - 1);
+    }
+    portal = new Portal(portalX, portalY, portalTX, portalTY, 'snake');
+    portal.init(this, snake);
+    endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'snake');
+    endPortal.init(this, snake);
 }
 
 function update() {
     snake.update(this);
+    portal.update(this, snake);
+    endPortal.update(this, snake);
 }
