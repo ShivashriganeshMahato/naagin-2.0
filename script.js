@@ -23,6 +23,110 @@ var config = {
     }
 };
 
+var ScoreManager = {
+    init: function() {
+        // Initialize Firebase
+        var config = {
+            apiKey: "AIzaSyDTjFo9xNlY8YQ7vRlxpRMUwrGYXtfwtpc",
+            authDomain: "naagin2-a23d2.firebaseapp.com",
+            databaseURL: "https://naagin2-a23d2.firebaseio.com",
+            projectId: "naagin2-a23d2",
+            storageBucket: "naagin2-a23d2.appspot.com",
+            messagingSenderId: "513168986921"
+        };
+        firebase.initializeApp(config);
+        this.db = firebase.firestore();
+        this.users = this.db.collection("users");
+        this.scores = this.db.collection("scores");
+    },
+    // callback accepts snapshot object
+    queryRaw: function(collection, field, comparator, value, callback) {
+        collection.where(field, comparator, value).get().then(callback);
+    },
+    // callback accepts queried documents parsed into array
+    query: function(collection, field, comparator, value, callback) {
+        this.queryRaw(collection, field, comparator, value, snapshot => {
+            let docs = [];
+            snapshot.forEach(doc => {
+                docs.push(doc.data());
+            });
+            callback(docs);
+        })
+    },
+    // callback accepts boolean (does user exist?)
+    doesUserExist: function(username, callback) {
+        this.query(this.users, "username", "==", username, docs => {
+            callback(docs.length !== 0);
+        });
+    },
+    // callback accept boolean (was authentication successful?)
+    authenticate: function(username, pwd, callback) {
+        this.query(this.users, "username", "==", username, docs => {
+            if (docs.length === 0) {
+                callback(false);
+                return;
+            }
+            callback(docs[0].password == hex_sha1(pwd));
+        });
+    },
+    // then accept boolean (was user successfully created?)
+    createUser: function(username, pwd, then) {
+        this.doesUserExist(username, result => {
+            if (result) {
+                console.log("User with username " + username + " already exists")
+                return;
+            }
+            this.users.add({
+                username: username,
+                password: hex_sha1(pwd)
+            }).then(() => {
+                if (then)
+                    then(true);
+            }).catch(error => {
+                console.error("Error writing document: ", error);
+                if (then)
+                    then(false);
+            })
+            this.scores.add({
+                username: username,
+                score: 0
+            });
+        })
+    },
+    // then accept boolean (was score successfully updated?)
+    setScore: function(username, score, then) {
+        this.queryRaw(this.scores, "username", "==", username, snapshot => {
+            let id = null;
+            snapshot.forEach(doc => {
+                id = doc.id;
+            })
+            this.scores.doc(id).set({
+                username: username,
+                score: score
+            }).then(() => {
+                if (then)
+                    then(true);
+            }).catch(error => {
+                console.error("Error writing document: ", error);
+                if (then)
+                    then(false);
+            })
+        });
+    },
+    // callback accepts array of non-zero scores
+    getScores: function(callback) {
+        this.scores.get().then(snapshot => {
+            let scores = [];
+            snapshot.forEach(doc => {
+                if (doc.data().score != 0) {
+                    scores.push(doc.data());
+                }
+            });
+            callback(scores);
+        });
+    }
+};
+
 // initX and initY should be grid coordinates
 function Body(initX, initY, initVx, initVy, sprite) {
     this.coors = new Vector2(initX, initY);
@@ -122,7 +226,7 @@ function Snake(sprite) {
                 snake.direction = snake.directions.DOWN;
             }
         })
-        phaser.input.keyboard.on("keydown_B", function () {
+        phaser.input.keyboard.on("keydown_B", function() {
             snake.addBody(phaser);
         });
     }
@@ -170,6 +274,11 @@ function preload() {
 }
 
 function create() {
+    ScoreManager.init();
+    ScoreManager.getScores(scores => {
+        console.log(scores);
+    });
+
     this.add.image(350, 350, 'sky');
 
     snake = new Snake('snake');
@@ -177,8 +286,10 @@ function create() {
 
     food = new Food('food');
 
-    let portalX = random(0, C - 1), portalY = random(0, R - 1),
-        portalTX = random(0, C - 1), portalTY = random(0, R - 1);
+    let portalX = random(0, C - 1),
+        portalY = random(0, R - 1),
+        portalTX = random(0, C - 1),
+        portalTY = random(0, R - 1);
     while (portalX === portalTX && portalY === portalTY ||
         Math.sqrt(Math.pow(portalX - portalTX, 2) + Math.pow(portalY - portalTY, 2)) < 8) {
         portalTX = random(0, C - 1);
