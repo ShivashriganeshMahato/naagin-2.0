@@ -1,5 +1,7 @@
 var Vector2 = Phaser.Math.Vector2;
 
+var alive = true;
+
 var GRID_SIZE = 32;
 var R = C = 22; // Rows, Columns
     // Generates random number between a and b, inclusive
@@ -147,7 +149,18 @@ var R = C = 22; // Rows, Columns
                 }
                 // Kill if out of bounds
                 if (head.pos.x <= -1 || head.pos.x >= 705 || head.pos.y <= -1 || head.pos.y >= 705) {
-                    //murder();
+                    alive = false;
+                }
+                let h = head.pos,
+                    S = GRID_SIZE / 2,
+                    c = this.bodies;
+                // Check collision
+                for(var i = c.length-1;i >= 2;i--){
+                    let b = c[i-2].pos;
+                    if (h.x + S > b.x - S && h.x - S < b.x + S &&
+                        h.y + S > b.y - S && h.y - S < b.y + S) {
+                            alive = false;
+                    }
                 }
             }
         }
@@ -167,6 +180,7 @@ var R = C = 22; // Rows, Columns
         this.load.image('sky', 'assets/skies/underwater1.png');
         this.load.image('snake', 'assets/sprites/32x32.png');
         this.load.image('food', 'assets/sprites/aqua_ball.png');
+        this.load.image('portal', 'assets/sprites/orb-green.png');
     }
 
     function create() {
@@ -187,18 +201,20 @@ var R = C = 22; // Rows, Columns
             portalTX = random(0, C - 1);
             portalTY = random(0, R - 1);
         }
-        portal = new Portal(portalX, portalY, portalTX, portalTY, 'snake');
+        portal = new Portal(portalX, portalY, portalTX, portalTY, 'portal');
         portal.init(this, snake);
-        endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'snake');
+        endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'portal');
         endPortal.init(this, snake);
 
     }
 
     function update() {
-        snake.update(this);
-        portal.update(this, snake);
-        endPortal.update(this, snake);
-        food.update(this, snake);
+        if(alive){
+            food.update(this, snake);
+            snake.update(this);
+            portal.update(this, snake);
+            endPortal.update(this, snake);
+        }
     }
 
 var config = {
