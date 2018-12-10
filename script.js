@@ -8,7 +8,6 @@ var R = C = 22; // Rows, Columns
     function random(a, b) {
         return Math.floor(Math.random() * b) + a;
     }
-
     // initX and initY should be grid coordinates
     function Body(initX, initY, initVx, initVy, sprite) {
         this.coors = new Vector2(initX, initY);
@@ -172,18 +171,25 @@ var R = C = 22; // Rows, Columns
         }
     }
 
-    var snake, food, portal, endPortal;
+var snake, food, portal, endPortal;
 
-    function preload() {
+var Game = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize:
+    function(){
+        Phaser.Scene.call(this, {key: 'game'});
+    },
+
+    preload: function() {
         this.load.setBaseURL('http://labs.phaser.io');
 
-        this.load.image('sky', 'assets/skies/underwater1.png');
+        this.load.image('sky', 'assets/skies/gradient12.png');
         this.load.image('snake', 'assets/sprites/32x32.png');
         this.load.image('food', 'assets/sprites/aqua_ball.png');
         this.load.image('portal', 'assets/sprites/orb-green.png');
-    }
+    },
 
-    function create() {
+    create: function() {
         this.add.image(350, 350, 'sky');
 
         snake = new Snake('snake');
@@ -205,10 +211,9 @@ var R = C = 22; // Rows, Columns
         portal.init(this, snake);
         endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'portal');
         endPortal.init(this, snake);
+    },
 
-    }
-
-    function update() {
+    update: function() {
         if(alive){
             food.update(this, snake);
             snake.update(this);
@@ -216,6 +221,27 @@ var R = C = 22; // Rows, Columns
             endPortal.update(this, snake);
         }
     }
+});
+
+var MainMenu = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize:
+    function(){
+        Phaser.Scene.call(this, {key: 'mgame'});
+    },
+    preload: function(){
+        this.load.setBaseURL('http://labs.phaser.io');
+        this.load.image('msky', 'assets/skies/gradient11.png');
+    },
+    create: function(){
+        this.add.image(350, 350, 'msky');
+        this.onClick = function(event){
+            this.scene.start('game');
+        }
+    },
+    update: function(){
+    }
+});
 
 var config = {
     type: Phaser.AUTO,
@@ -225,10 +251,7 @@ var config = {
         default: 'arcade',
         arcade: {}
     },
-    scene: {
-        update: update,
-        preload: preload,
-        create: create
-    }
+    scene: [MainMenu, Game]
 };
+
 var game = new Phaser.Game(config);
