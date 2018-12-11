@@ -1,4 +1,5 @@
 var Vector2 = Phaser.Math.Vector2;
+var Vector3 = Phaser.Math.Vector3;
 
 var GRID_SIZE = 32;
 var R = C = 22; // Rows, Columns
@@ -22,7 +23,6 @@ var config = {
         update: update
     }
 };
-
 var ScoreManager = {
     init: function() {
         // Initialize Firebase
@@ -134,7 +134,7 @@ var ScoreManager = {
 
 // initX and initY should be grid coordinates
 function Body(initX, initY, initVx, initVy, sprite) {
-    this.coors = new Vector2(initX, initY);
+    this.coors = new Vector3(initX, initY, 1);
     // Interpolate grid coordinates onto screen
     this.pos = new Vector2(GRID_SIZE / 2 + GRID_SIZE * initX,
         GRID_SIZE / 2 + GRID_SIZE * initY);
@@ -145,6 +145,7 @@ Body.prototype.init = function(phaser) {
     // Create and add body to world
     this.body = phaser.physics.add.image(this.pos.x, this.pos.y, this.sprite);
     this.body.setVelocity(this.vel.x, this.vel.y);
+    this.body.setDisplaySize(GRID_SIZE, GRID_SIZE);
 }
 
 function Portal(x, y, toX, toY, sprite) {
@@ -161,8 +162,8 @@ Portal.prototype.update = function(phaser, snake) {
         S = GRID_SIZE / 2;
 
     // Check collision
-    if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
-        h.y + S > b.y - S && h.y - S < b.y + S) {
+    if (!snake.isTeleporting && this.body.visible && h.x + S > b.x - S &&
+        h.x - S < b.x + S && h.y + S > b.y - S && h.y - S < b.y + S) {
         // Teleport head, body will follow
         head.coors.set(this.to.x, this.to.y);
         head.pos.set(GRID_SIZE / 2 + GRID_SIZE * this.to.x,
@@ -176,7 +177,11 @@ function Food(sprite) {
 }
 
 function Snake(sprite) {
-    this.bodies = [new Body(0, 0, 0, 0, sprite), new Body(1, 0, 0, 0, sprite), new Body(2, 0, 0, 0, sprite)];
+    this.z = 1;
+    this.getSprite = function() {
+        return sprite + this.z.toString();
+    }
+    this.bodies = [new Body(0, 0, 0, 0, this.getSprite()), new Body(1, 0, 0, 0, this.getSprite()), new Body(2, 0, 0, 0, this.getSprite())];
     this.timer = 0;
     this.isTeleporting = false;
     this.direction = null;
@@ -241,7 +246,7 @@ function Snake(sprite) {
             if (this.timer >= this.PERIOD) {
                 // Every this.PERIOD frames, move snake by moving tail to desired new head position
                 let newBody = new Body(head.coors.x + this.direction.x,
-                    head.coors.y + this.direction.y, 0, 0, sprite);
+                    head.coors.y + this.direction.y, 0, 0, this.getSprite());
                 newBody.init(phaser);
                 this.bodies.push(newBody);
                 this.bodies.splice(0, 1)[0].body.destroy();
@@ -258,7 +263,7 @@ function Snake(sprite) {
     }
     this.addBody = function(phaser) {
         let tail = this.bodies[0];
-        let newBody = new Body(tail.coors.x, tail.coors.y, 0, 0, sprite);
+        let newBody = new Body(tail.coors.x, tail.coors.y, 0, 0, this.getSprite());
         newBody.init(phaser);
         this.bodies.unshift(newBody);
     }
@@ -275,12 +280,18 @@ function preload() {
     this.load.setBaseURL('http://labs.phaser.io');
 
     this.load.image('sky', 'assets/skies/underwater1.png');
-    this.load.image('snake', 'assets/sprites/32x32.png');
+    this.load.image('snake1', 'assets/sprites/copy-that-floppy.png');
+    this.load.image('snake2', 'assets/sprites/128x128.png');
+    this.load.image('snake3', 'assets/sprites/fmship.png');
+    this.load.image('snake4', 'assets/sprites/longarrow.png');
+    this.load.image('snake5', 'assets/sprites/orb-green.png');
+    this.load.image('snake6', 'assets/sprites/rick.png');
+    this.load.image('snake7', 'assets/sprites/car-police.png');
 }
 
 async function create() {
-    ScoreManager.init();
-    console.log(await ScoreManager.setScore("arya", 18));
+    // ScoreManager.init();
+    // console.log(await ScoreManager.setScore("arya", 18));
 
     this.add.image(350, 350, 'sky');
 
@@ -300,6 +311,7 @@ async function create() {
     }
     portal = new Portal(portalX, portalY, portalTX, portalTY, 'snake');
     portal.init(this, snake);
+    portal.body.visible = false;
     endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'snake');
     endPortal.init(this, snake);
 }
