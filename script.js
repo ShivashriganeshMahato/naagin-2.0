@@ -58,9 +58,12 @@ var ScoreManager = {
     },
     // callback accepts boolean (does user exist?)
     doesUserExist: function(username, callback) {
-        this.query(this.users, "username", "==", username, docs => {
-            callback(docs.length !== 0);
-        });
+        return new Promise(resolve => {
+            this.query(this.users, "username", "==", username, docs => {
+                // callback(docs.length !== 0);
+                resolve(docs.length !== 0);
+            });
+        })
     },
     // callback accept boolean (was authentication successful?)
     authenticate: function(username, pwd, callback) {
@@ -303,52 +306,41 @@ function preload() {
     this.load.image('portal', 'assets/sprites/orb-green.png');
 }
 
-function create() {
+async function create() {
+    ScoreManager.init();
+    console.log(await ScoreManager.doesUserExist("sree"));
+    // ScoreManager.doesUserExist("srees", result => {
+    //     console.log(result);
+    // });
+
     this.add.image(350, 350, 'sky');
 
-    function create() {
-        ScoreManager.init();
-        ScoreManager.getScores(scores => {
-            console.log(scores);
-        });
+    snake = new Snake('snake');
+    snake.init(this);
 
-        this.add.image(350, 350, 'sky');
+    food = new Food('food');
+    food.init(this);
 
-        snake = new Snake('snake');
-        snake.init(this);
+    let portalX = random(0, C - 1),
+        portalY = random(0, R - 1),
+        portalTX = random(0, C - 1),
+        portalTY = random(0, R - 1);
+    while (portalX === portalTX && portalY === portalTY ||
+        Math.sqrt(Math.pow(portalX - portalTX, 2) + Math.pow(portalY - portalTY, 2)) < 8) {
+        portalTX = random(0, C - 1);
+        portalTY = random(0, R - 1);
+    }
+    portal = new Portal(portalX, portalY, portalTX, portalTY, 'portal');
+    portal.init(this, snake);
+    endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'portal');
+    endPortal.init(this, snake);
+}
 
-        food = new Food('food');
-        food.init(this);
-
-        let portalX = random(0, C - 1),
-            portalY = random(0, R - 1),
-            portalTX = random(0, C - 1),
-            portalTY = random(0, R - 1);
-        while (portalX === portalTX && portalY === portalTY ||
-            Math.sqrt(Math.pow(portalX - portalTX, 2) + Math.pow(portalY - portalTY, 2)) < 8) {
-            portalTX = random(0, C - 1);
-            portalTY = random(0, R - 1);
-        }
-        portal = new Portal(portalX, portalY, portalTX, portalTY, 'portal');
-        portal.init(this, snake);
-        endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'portal');
-        endPortal.init(this, snake);
-
-        let portalX = random(0, C - 1),
-            portalY = random(0, R - 1),
-            portalTX = random(0, C - 1),
-            portalTY = random(0, R - 1);
-        while (portalX === portalTX && portalY === portalTY ||
-            Math.sqrt(Math.pow(portalX - portalTX, 2) + Math.pow(portalY - portalTY, 2)) < 8) {
-            portalTX = random(0, C - 1);
-            portalTY = random(0, R - 1);
-        }
-
-        function update() {
-            if (alive) {
-                food.update(this, snake);
-                snake.update(this);
-                portal.update(this, snake);
-                endPortal.update(this, snake);
-            }
-        }
+function update() {
+    if (alive) {
+        food.update(this, snake);
+        snake.update(this);
+        portal.update(this, snake);
+        endPortal.update(this, snake);
+    }
+}
