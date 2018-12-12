@@ -1,4 +1,5 @@
 var Vector2 = Phaser.Math.Vector2;
+var Vector3 = Phaser.Math.Vector3;
 
 var alive = true;
 
@@ -19,13 +20,6 @@ var config = {
         create: create
     }
 };
-var game = new Phaser.Game(config);
-
-// Generates random number between a and b, inclusive
-function random(a, b) {
-    return Math.floor(Math.random() * b) + a;
-}
-
 var ScoreManager = {
     init: function() {
         // Initialize Firebase
@@ -136,8 +130,8 @@ var ScoreManager = {
 };
 
 // initX and initY should be grid coordinates
-function Body(initX, initY, initVx, initVy, sprite) {
-    this.coors = new Vector2(initX, initY);
+function Body(initX, initY, initVx, initVy, sprite, initZ) {
+    this.coors = new Vector3(initX, initY, initZ || 1);
     // Interpolate grid coordinates onto screen
     this.pos = new Vector2(GRID_SIZE / 2 + GRID_SIZE * initX,
         GRID_SIZE / 2 + GRID_SIZE * initY);
@@ -148,30 +142,48 @@ Body.prototype.init = function(phaser) {
     // Create and add body to world
     this.body = phaser.physics.add.image(this.pos.x, this.pos.y, this.sprite);
     this.body.setVelocity(this.vel.x, this.vel.y);
+    this.body.setDisplaySize(GRID_SIZE, GRID_SIZE);
 }
 
-function Portal(x, y, toX, toY, sprite) {
+function Portal(x, y, z, toX, toY, toZ, sprite) {
     // Call Body's constructor
-    Body.call(this, x, y, 0, 0, sprite);
-    this.to = new Vector2(toX, toY);
+    Body.call(this, x, y, 0, 0, sprite, z);
+    this.to = new Vector3(toX, toY, toZ);
 }
 // Make Portal a child of Body
 Portal.prototype = Object.create(Body.prototype);
-Portal.prototype.update = function(phaser, snake) {
-    let head = snake.bodies[snake.bodies.length - 1],
-        h = head.pos,
-        b = this.body,
-        S = GRID_SIZE / 2;
+Portal.prototype.connectTo = function(oPortal) {
+    this.to.set(oPortal.coors.x, oPortal.coors.y, oPortal.coors.z);
+    oPortal.to.set(this.coors.x, this.coors.y, this.coors.z);
+};
+Portal.prototype.update = function(phaser, snakes) {
+    let isSnakeOnLevel = false;
 
-    // Check collision
-    if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
-        h.y + S > b.y - S && h.y - S < b.y + S) {
-        // Teleport head, body will follow
-        head.coors.set(this.to.x, this.to.y);
-        head.pos.set(GRID_SIZE / 2 + GRID_SIZE * this.to.x,
-            GRID_SIZE / 2 + GRID_SIZE * this.to.y);
-        snake.isTeleporting = true;
-    }
+    snakes.forEach(snake => {
+        if (snake.z !== this.coors.z) {
+            return;
+        } else {
+            isSnakeOnLevel = true;
+        }
+
+        let head = snake.bodies[snake.bodies.length - 1],
+            h = head.pos,
+            b = this.body,
+            S = GRID_SIZE / 2;
+
+        // Check collision
+        if (!snake.isTeleporting && this.body.visible && h.x + S > b.x - S &&
+            h.x - S < b.x + S && h.y + S > b.y - S && h.y - S < b.y + S) {
+            // Teleport head, body will follow
+            snake.z = this.to.z;
+            head.coors.set(this.to.x, this.to.y, snake.z);
+            head.pos.set(GRID_SIZE / 2 + GRID_SIZE * this.to.x,
+                GRID_SIZE / 2 + GRID_SIZE * this.to.y);
+            snake.isTeleporting = true;
+        }
+    });
+
+    this.body.visible = isSnakeOnLevel;
 };
 
 function Food(sprite) {
@@ -198,7 +210,11 @@ Food.prototype.update = function(phaser, snake) {
 }
 
 function Snake(sprite) {
-    this.bodies = [new Body(0, 0, 0, 0, sprite)];
+    this.z = 1;
+    this.getSprite = function() {
+        return sprite + this.z.toString();
+    }
+    this.bodies = [new Body(0, 0, 0, 0, this.getSprite()), new Body(1, 0, 0, 0, this.getSprite()), new Body(2, 0, 0, 0, this.getSprite())];
     this.timer = 0;
     this.isTeleporting = false;
     this.direction = null;
@@ -209,19 +225,17 @@ function Snake(sprite) {
         DOWN: new Vector2(0, 1)
     };
     this.keys = {
-        left: ["keydown_A", "keydown_left"],
-        right: ["keydown_D", "keydown_right"],
-        up: ["keydown_W", "keydown_up"],
-        down: ["keydown_S", "keydown_down"]
+        left: ["keydown_A", "keydown_J", "keydown_left"],
+        right: ["keydown_D", "keydown_L", "keydown_right"],
+        up: ["keydown_W", "keydown_I", "keydown_up"],
+        down: ["keydown_S", "keydown_K", "keydown_down"]
     };
     this.PERIOD = 7;
-    this.bindKey = function(phaser, name, callback) {
-        // Bind all key codes to an action
-        this.keys[name].forEach(key => {
-            phaser.input.keyboard.on(key, callback);
-        });
+    this.bindKey = function(phaser, name, controlsID, callback) {
+        // Bind appropriate key code to an action
+        phaser.input.keyboard.on(this.keys[name][controlsID], callback);
     }
-    this.init = function(phaser) {
+    this.init = function(phaser, controlsID) {
         this.bodies.forEach(body => {
             body.init(phaser);
         });
@@ -233,22 +247,22 @@ function Snake(sprite) {
             return snake.direction === null || snake.bodies.length <= 1 ||
                 !snake.direction.equals(oppositeDir);
         }
-        this.bindKey(phaser, "left", function() {
+        this.bindKey(phaser, "left", controlsID, function() {
             if (canChangeDirection(snake.directions.RIGHT)) {
                 snake.direction = snake.directions.LEFT;
             }
         })
-        this.bindKey(phaser, "right", function() {
+        this.bindKey(phaser, "right", controlsID, function() {
             if (canChangeDirection(snake.directions.LEFT)) {
                 snake.direction = snake.directions.RIGHT;
             }
         })
-        this.bindKey(phaser, "up", function() {
+        this.bindKey(phaser, "up", controlsID, function() {
             if (canChangeDirection(snake.directions.DOWN)) {
                 snake.direction = snake.directions.UP;
             }
         })
-        this.bindKey(phaser, "down", function() {
+        this.bindKey(phaser, "down", controlsID, function() {
             if (canChangeDirection(snake.directions.UP)) {
                 snake.direction = snake.directions.DOWN;
             }
@@ -263,7 +277,7 @@ function Snake(sprite) {
             if (this.timer >= this.PERIOD) {
                 // Every this.PERIOD frames, move snake by moving tail to desired new head position
                 let newBody = new Body(head.coors.x + this.direction.x,
-                    head.coors.y + this.direction.y, 0, 0, sprite);
+                    head.coors.y + this.direction.y, 0, 0, this.getSprite());
                 newBody.init(phaser);
                 this.bodies.push(newBody);
                 this.bodies.splice(0, 1)[0].body.destroy();
@@ -291,55 +305,99 @@ function Snake(sprite) {
     }
     this.addBody = function(phaser) {
         let tail = this.bodies[0];
-        let newBody = new Body(tail.coors.x, tail.coors.y, 0, 0, sprite);
+        let newBody = new Body(tail.coors.x, tail.coors.y, 0, 0, this.getSprite());
         newBody.init(phaser);
         this.bodies.unshift(newBody);
     }
 }
 
-var snake, food, portal, endPortal;
+var game = new Phaser.Game(config);
+var snakes = [], food, portals = [];
 
 function preload() {
     this.load.setBaseURL('http://labs.phaser.io');
 
     this.load.image('sky', 'assets/skies/underwater1.png');
-    this.load.image('snake', 'assets/sprites/32x32.png');
-    this.load.image('food', 'assets/sprites/aqua_ball.png');
-    this.load.image('portal', 'assets/sprites/orb-green.png');
+    this.load.image('snake1', 'assets/sprites/copy-that-floppy.png');
+    this.load.image('snake2', 'assets/sprites/128x128.png');
+    this.load.image('snake3', 'assets/sprites/fmship.png');
+    this.load.image('snake4', 'assets/sprites/longarrow.png');
+    this.load.image('snake5', 'assets/sprites/orb-green.png');
+    this.load.image('snake6', 'assets/sprites/rick.png');
+    this.load.image('portal1', 'assets/sprites/car-police.png');
+    this.load.image('portal2', 'assets/sprites/xenon2_ship.png');
+    this.load.image('portal3', 'assets/sprites/mask1.png');
+    this.load.image('portal4', 'assets/sprites/strip1.png');
+    this.load.image('portal5', 'assets/sprites/tinycar.png');
+    this.load.image('portal6', 'assets/sprites/wabbit.png');
+}
+
+function generatePortals(phaser, levels) {
+    let positions = [];
+
+    // Check if position was already generated
+    function positionExists(position) {
+        let exists = false;
+
+        positions.forEach(pos => {
+            if (pos.equals(position)) exists = true;
+        });
+
+        return exists;
+    }
+
+    // Generate positions for 2 portals per level
+    for (var i = 0; i < levels * 2; i++) {
+        let position = new Vector2(random(0, C - 1), random(0, R - 1));
+
+        while (positionExists(position)) {
+            position = new Vector2(random(0, C - 1), random(0, R - 1))
+        }
+
+        positions.push(position);
+    }
+
+    // Generate portals from positions
+    for (var l = 1, j = 0; l <= levels; l++, j += 2) {
+        let pos1 = positions[j];
+        let to1 = positions[j === 0 ? positions.length - 1 : j - 1];
+        let toZ1 = l === 1 ? levels : l - 1;
+        let pos2 = positions[j + 1];
+        let to2 = positions[j === positions.length - 2 ? 0 : j + 2];
+        let toZ2 = l === levels ? 1 : l + 1;
+
+        let portal1 = new Portal(pos1.x, pos1.y, l,
+            to1.x, to1.y, toZ1, 'portal' + l);
+        portal1.init(phaser);
+
+        let portal2 = new Portal(pos2.x, pos2.y, l,
+            to2.x, to2.y, toZ2, 'portal' + l);
+        portal2.init(phaser);
+
+        portals.push(portal1);
+        portals.push(portal2);
+    }
 }
 
 async function create() {
-    ScoreManager.init();
-    console.log(await ScoreManager.setScore("arya", 18));
-
     this.add.image(350, 350, 'sky');
 
-    snake = new Snake('snake');
-    snake.init(this);
+    for (var i = 0; i < 2; i++) {
+        snakes.push(new Snake('snake'));
+        snakes[i].init(this, i);
+    }
 
     food = new Food('food');
     food.init(this);
 
-    let portalX = random(0, C - 1),
-        portalY = random(0, R - 1),
-        portalTX = random(0, C - 1),
-        portalTY = random(0, R - 1);
-    while (portalX === portalTX && portalY === portalTY ||
-        Math.sqrt(Math.pow(portalX - portalTX, 2) + Math.pow(portalY - portalTY, 2)) < 8) {
-        portalTX = random(0, C - 1);
-        portalTY = random(0, R - 1);
-    }
-    portal = new Portal(portalX, portalY, portalTX, portalTY, 'portal');
-    portal.init(this, snake);
-    endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'portal');
-    endPortal.init(this, snake);
+    generatePortals(this, 6);
 }
 
 function update() {
-    if (alive) {
-        food.update(this, snake);
+    snakes.forEach(snake => {
         snake.update(this);
-        portal.update(this, snake);
-        endPortal.update(this, snake);
-    }
+    });
+    portals.forEach(portal => {
+        portal.update(this, snakes);
+    });
 }
