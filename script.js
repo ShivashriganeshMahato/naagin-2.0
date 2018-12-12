@@ -57,78 +57,80 @@ var ScoreManager = {
         })
     },
     // callback accepts boolean (does user exist?)
-    doesUserExist: function(username, callback) {
+    doesUserExist: function(username) {
         return new Promise(resolve => {
             this.query(this.users, "username", "==", username, docs => {
-                // callback(docs.length !== 0);
                 resolve(docs.length !== 0);
             });
-        })
+        });
     },
     // callback accept boolean (was authentication successful?)
     authenticate: function(username, pwd, callback) {
-        this.query(this.users, "username", "==", username, docs => {
-            if (docs.length === 0) {
-                callback(false);
-                return;
-            }
-            callback(docs[0].password == hex_sha1(pwd));
+        return new Promise(resolve => {
+            this.query(this.users, "username", "==", username, docs => {
+                if (docs.length === 0) {
+                    resolve(false);
+                    return;
+                }
+                resolve(docs[0].password == hex_sha1(pwd));
+            });
         });
     },
     // then accept boolean (was user successfully created?)
-    createUser: function(username, pwd, then) {
-        this.doesUserExist(username, result => {
-            if (result) {
+    createUser: async function(username, pwd) {
+        return new Promise(resolve => {
+            let doesUserExist = this.doesUserExist(username);
+            if (doesUserExist) {
                 console.log("User with username " + username + " already exists")
-                return;
+                resolve(false);
             }
             this.users.add({
                 username: username,
                 password: hex_sha1(pwd)
             }).then(() => {
-                if (then)
-                    then(true);
+                resolve(true);
             }).catch(error => {
                 console.error("Error writing document: ", error);
-                if (then)
-                    then(false);
+                resolve(false);
             })
             this.scores.add({
                 username: username,
                 score: 0
             });
-        })
+        });
     },
     // then accept boolean (was score successfully updated?)
-    setScore: function(username, score, then) {
-        this.queryRaw(this.scores, "username", "==", username, snapshot => {
-            let id = null;
-            snapshot.forEach(doc => {
-                id = doc.id;
-            })
-            this.scores.doc(id).set({
-                username: username,
-                score: score
-            }).then(() => {
-                if (then)
-                    then(true);
-            }).catch(error => {
-                console.error("Error writing document: ", error);
-                if (then)
-                    then(false);
-            })
+    setScore: async function(username, score) {
+        return new Promise(resolve => {
+            this.queryRaw(this.scores, "username", "==", username, snapshot => {
+                let id = null;
+                snapshot.forEach(doc => {
+                    id = doc.id;
+                })
+                this.scores.doc(id).set({
+                    username: username,
+                    score: score
+                }).then(() => {
+                    resolve(true);
+                }).catch(error => {
+                    console.error("Error writing document: ", error);
+                    resolve(false);
+                })
+            });
         });
     },
     // callback accepts array of non-zero scores
-    getScores: function(callback) {
-        this.scores.get().then(snapshot => {
-            let scores = [];
-            snapshot.forEach(doc => {
-                if (doc.data().score != 0) {
-                    scores.push(doc.data());
-                }
+    getScores: async function(callback) {
+        return new Promise(resolve => {
+            this.scores.get().then(snapshot => {
+                let scores = [];
+                snapshot.forEach(doc => {
+                    if (doc.data().score != 0) {
+                        scores.push(doc.data());
+                    }
+                });
+                resolve(scores);
             });
-            callback(scores);
         });
     }
 };
@@ -308,10 +310,7 @@ function preload() {
 
 async function create() {
     ScoreManager.init();
-    console.log(await ScoreManager.doesUserExist("sree"));
-    // ScoreManager.doesUserExist("srees", result => {
-    //     console.log(result);
-    // });
+    console.log(await ScoreManager.setScore("arya", 18));
 
     this.add.image(350, 350, 'sky');
 
