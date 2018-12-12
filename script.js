@@ -219,6 +219,9 @@ var Game = new Phaser.Class({
             snake.update(this);
             portal.update(this, snake);
             endPortal.update(this, snake);
+        }else{
+            this.scene.start('egame');
+            alive = true;
         }
     }
 });
@@ -232,16 +235,50 @@ var MainMenu = new Phaser.Class({
     preload: function(){
         this.load.setBaseURL('http://labs.phaser.io');
         this.load.image('msky', 'assets/skies/gradient11.png');
+        this.load.image('snake', 'assets/sprites/32x32.png');
     },
     create: function(){
         this.add.image(350, 350, 'msky');
-        this.onClick = function(event){
+
+        const greeting = this.add.text(30,100, 'WELCOME TO NAAGIN 2.0', {fontSize: '50px'});
+
+        const clickButton = this.add.text(200, 300, 'Let us Play!', { fill: '#0000FF', fontSize: '32px' })
+        .setInteractive()
+        .on('pointerdown', function(event){
             this.scene.start('game');
-        }
+        },this);
     },
     update: function(){
     }
 });
+
+var GameOver = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize:
+    function(){
+        Phaser.Scene.call(this, {key: 'egame'});
+    },
+    preload: function(){
+        this.load.setBaseURL('http://labs.phaser.io');
+        this.load.image('msky', 'assets/skies/gradient11.png');
+    },
+    create: function(){
+        this.add.image(350, 350, 'msky');
+        let clickCount = 0;
+        this.clickCountText = this.add.text(100, 200, '');
+
+        const alert = this.add.text(150,100, 'YOU ARE DEAD', {fontSize: '50px'});
+
+        const clickButton = this.add.text(220,300, 'Play Again?', {fontSize: '32px'})
+        .setInteractive()
+        .on('pointerdown', function(event){
+            this.scene.start('mgame');
+        },this);
+    },
+    update: function(){
+    }
+});
+
 
 var config = {
     type: Phaser.AUTO,
@@ -251,7 +288,7 @@ var config = {
         default: 'arcade',
         arcade: {}
     },
-    scene: [MainMenu, Game]
+    scene: [MainMenu, Game,GameOver]
 };
 
 var game = new Phaser.Game(config);
