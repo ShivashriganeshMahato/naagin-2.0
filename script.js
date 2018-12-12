@@ -6,20 +6,11 @@ var alive = true;
 var GRID_SIZE = 32;
 var R = C = 22; // Rows, Columns
 
-var config = {
-    type: Phaser.AUTO,
-    width: C * GRID_SIZE,
-    height: R * GRID_SIZE,
-    physics: {
-        default: 'arcade',
-        arcade: {}
-    },
-    scene: {
-        update: update,
-        preload: preload,
-        create: create
-    }
-};
+// Generates random number between a and b, inclusive
+function random(a, b) {
+    return Math.floor(Math.random() * b) + a;
+}
+
 var ScoreManager = {
     init: function() {
         // Initialize Firebase
@@ -190,23 +181,25 @@ function Food(sprite) {
     Body.call(this, random(0, C - 1), random(0, R - 1), 0, 0, sprite);
 }
 Food.prototype = Object.create(Body.prototype);
-Food.prototype.update = function(phaser, snake) {
-    let head = snake.bodies[snake.bodies.length - 1],
-        h = head.pos,
-        b = this.body,
-        S = GRID_SIZE / 2;
-    // Check collision
-    if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
-        h.y + S > b.y - S && h.y - S < b.y + S) {
-        snake.addBody(phaser);
-        //this.body.destroy();
-        let x = random(0, C - 1),
-            y = random(0, R - 1);
+Food.prototype.update = function(phaser, snakes) {
+    snakes.forEach(snake => {
+        let head = snake.bodies[snake.bodies.length - 1],
+            h = head.pos,
+            b = this.body,
+            S = GRID_SIZE / 2;
+        // Check collision
+        if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
+            h.y + S > b.y - S && h.y - S < b.y + S) {
+            snake.addBody(phaser);
+            //this.body.destroy();
+            let x = random(0, C - 1),
+                y = random(0, R - 1);
 
-        this.coors.set(x, y);
-        this.body.setPosition(GRID_SIZE / 2 + GRID_SIZE * x,
-            GRID_SIZE / 2 + GRID_SIZE * y);
-    }
+            this.coors.set(x, y);
+            this.body.setPosition(GRID_SIZE / 2 + GRID_SIZE * x,
+                GRID_SIZE / 2 + GRID_SIZE * y);
+        }
+    });
 }
 
 function Snake(sprite) {
@@ -311,26 +304,9 @@ function Snake(sprite) {
     }
 }
 
-var game = new Phaser.Game(config);
-var snakes = [], food, portals = [];
-
-function preload() {
-    this.load.setBaseURL('http://labs.phaser.io');
-
-    this.load.image('sky', 'assets/skies/underwater1.png');
-    this.load.image('snake1', 'assets/sprites/copy-that-floppy.png');
-    this.load.image('snake2', 'assets/sprites/128x128.png');
-    this.load.image('snake3', 'assets/sprites/fmship.png');
-    this.load.image('snake4', 'assets/sprites/longarrow.png');
-    this.load.image('snake5', 'assets/sprites/orb-green.png');
-    this.load.image('snake6', 'assets/sprites/rick.png');
-    this.load.image('portal1', 'assets/sprites/car-police.png');
-    this.load.image('portal2', 'assets/sprites/xenon2_ship.png');
-    this.load.image('portal3', 'assets/sprites/mask1.png');
-    this.load.image('portal4', 'assets/sprites/strip1.png');
-    this.load.image('portal5', 'assets/sprites/tinycar.png');
-    this.load.image('portal6', 'assets/sprites/wabbit.png');
-}
+var snakes = [],
+    food, portals = [],
+    labels = [];
 
 function generatePortals(phaser, levels) {
     let positions = [];
@@ -379,25 +355,143 @@ function generatePortals(phaser, levels) {
     }
 }
 
-async function create() {
-    this.add.image(350, 350, 'sky');
+var Game = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function() {
+        Phaser.Scene.call(this, {
+            key: 'game'
+        });
+    },
 
-    for (var i = 0; i < 2; i++) {
-        snakes.push(new Snake('snake'));
-        snakes[i].init(this, i);
+    preload: function() {
+        this.load.setBaseURL('http://labs.phaser.io');
+
+        this.load.image('sky', 'assets/skies/gradient12.png');
+        this.load.image('snake', 'assets/sprites/32x32.png');
+        this.load.image('food', 'assets/sprites/aqua_ball.png');
+        this.load.image('portal', 'assets/sprites/orb-green.png');
+
+        this.load.image('sky', 'assets/skies/underwater1.png');
+        this.load.image('snake1', 'assets/sprites/copy-that-floppy.png');
+        this.load.image('snake2', 'assets/sprites/128x128.png');
+        this.load.image('snake3', 'assets/sprites/fmship.png');
+        this.load.image('snake4', 'assets/sprites/longarrow.png');
+        this.load.image('snake5', 'assets/sprites/orb-green.png');
+        this.load.image('snake6', 'assets/sprites/rick.png');
+        this.load.image('portal1', 'assets/sprites/car-police.png');
+        this.load.image('portal2', 'assets/sprites/xenon2_ship.png');
+        this.load.image('portal3', 'assets/sprites/mask1.png');
+        this.load.image('portal4', 'assets/sprites/strip1.png');
+        this.load.image('portal5', 'assets/sprites/tinycar.png');
+        this.load.image('portal6', 'assets/sprites/wabbit.png');
+    },
+    create: async function() {
+        this.add.image(350, 350, 'sky');
+
+        for (var i = 0; i < 2; i++) {
+            snakes.push(new Snake('snake'));
+            snakes[i].init(this, i);
+            labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
+                fontSize: '20px'
+            }));
+        }
+
+        food = new Food('food');
+        food.init(this);
+
+        generatePortals(this, 6);
+    },
+    update: async function() {
+        for (var i = 0; i < snakes.length; i++) {
+            labels[i].setText('Snake ' + (i + 1) + ' Score: ' + (snakes[i].bodies.length - 1));
+        }
+        if (alive) {
+            food.update(this, snakes);
+            snakes.forEach(snake => {
+                snake.update(this);
+            });
+            portals.forEach(portal => {
+                portal.update(this, snakes);
+            });
+        } else {
+            this.scene.start('egame');
+            alive = true;
+        }
     }
+});
 
-    food = new Food('food');
-    food.init(this);
+var MainMenu = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function() {
+        Phaser.Scene.call(this, {
+            key: 'mgame'
+        });
+    },
+    preload: function() {
+        this.load.setBaseURL('http://labs.phaser.io');
+        this.load.image('msky', 'assets/skies/gradient11.png');
+        this.load.image('snake', 'assets/sprites/32x32.png');
+    },
+    create: function() {
+        this.add.image(350, 350, 'msky');
 
-    generatePortals(this, 6);
-}
+        const greeting = this.add.text(30, 100, 'WELCOME TO NAAGIN 2.0', {
+            fontSize: '50px'
+        });
 
-function update() {
-    snakes.forEach(snake => {
-        snake.update(this);
-    });
-    portals.forEach(portal => {
-        portal.update(this, snakes);
-    });
-}
+        const clickButton = this.add.text(200, 300, 'Let us Play!', {
+                fill: '#0000FF',
+                fontSize: '32px'
+            })
+            .setInteractive()
+            .on('pointerdown', function(event) {
+                this.scene.start('game');
+            }, this);
+    },
+    update: function() {}
+});
+
+var GameOver = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function() {
+        Phaser.Scene.call(this, {
+            key: 'egame'
+        });
+    },
+    preload: function() {
+        this.load.setBaseURL('http://labs.phaser.io');
+        this.load.image('msky', 'assets/skies/gradient11.png');
+    },
+    create: function() {
+        this.add.image(350, 350, 'msky');
+        let clickCount = 0;
+        this.clickCountText = this.add.text(100, 200, '');
+
+        const alert = this.add.text(150, 100, 'YOU ARE DEAD', {
+            fontSize: '50px'
+        });
+
+        const clickButton = this.add.text(220, 300, 'Play Again?', {
+                fontSize: '32px'
+            })
+            .setInteractive()
+            .on('pointerdown', function(event) {
+                this.scene.start('mgame');
+            }, this);
+    },
+    update: function() {}
+});
+
+
+var config = {
+    type: Phaser.AUTO,
+    width: C * GRID_SIZE,
+    height: R * GRID_SIZE,
+    physics: {
+        default: 'arcade',
+        arcade: {}
+    },
+    scene: [MainMenu, Game, GameOver]
+};
+
+var game = new Phaser.Game(config);
