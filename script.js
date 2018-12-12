@@ -171,7 +171,7 @@ var R = C = 22; // Rows, Columns
         }
     }
 
-var snake, food, portal, endPortal;
+var snake, food, portal, endPortal,label;
 
 var Game = new Phaser.Class({
     Extends: Phaser.Scene,
@@ -211,9 +211,12 @@ var Game = new Phaser.Class({
         portal.init(this, snake);
         endPortal = new Portal(portalTX, portalTY, portalX, portalY, 'portal');
         endPortal.init(this, snake);
+
+        label = this.add.text(30,100, 'Score: 0', {fontSize: '20px'});
     },
 
     update: function() {
+        label.setText('Score: ' + (snake.bodies.length-1));
         if(alive){
             food.update(this, snake);
             snake.update(this);
