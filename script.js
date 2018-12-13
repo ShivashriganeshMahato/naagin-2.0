@@ -124,8 +124,8 @@ var ScoreManager = {
 function Body(initX, initY, initVx, initVy, sprite, initZ) {
     this.coors = new Vector3(initX, initY, initZ || 1);
     // Interpolate grid coordinates onto screen
-    this.pos = new Vector2(GRID_SIZE / 2 + GRID_SIZE * initX,
-        GRID_SIZE / 2 + GRID_SIZE * initY);
+    this.pos = new Vector2(10 + GRID_SIZE / 2 + GRID_SIZE * initX,
+        10 + GRID_SIZE / 2 + GRID_SIZE * initY);
     this.vel = new Vector2(initVx, initVy);
     this.sprite = sprite;
 }
@@ -168,8 +168,8 @@ Portal.prototype.update = function(phaser, snakes) {
             // Teleport head, body will follow
             snake.z = this.to.z;
             head.coors.set(this.to.x, this.to.y, snake.z);
-            head.pos.set(GRID_SIZE / 2 + GRID_SIZE * this.to.x,
-                GRID_SIZE / 2 + GRID_SIZE * this.to.y);
+            head.pos.set(10 + GRID_SIZE / 2 + GRID_SIZE * this.to.x,
+                10 + GRID_SIZE / 2 + GRID_SIZE * this.to.y);
             snake.isTeleporting = true;
         }
     });
@@ -196,8 +196,8 @@ Food.prototype.update = function(phaser, snakes) {
                 y = random(0, R - 1);
 
             this.coors.set(x, y);
-            this.body.setPosition(GRID_SIZE / 2 + GRID_SIZE * x,
-                GRID_SIZE / 2 + GRID_SIZE * y);
+            this.body.setPosition(10 + GRID_SIZE / 2 + GRID_SIZE * x,
+                10 + GRID_SIZE / 2 + GRID_SIZE * y);
         }
     });
 }
@@ -224,6 +224,7 @@ function Snake(sprite) {
         down: ["keydown_S", "keydown_K", "keydown_down"]
     };
     this.PERIOD = 7;
+    this.headShade = "";
     this.bindKey = function(phaser, name, controlsID, callback) {
         // Bind appropriate key code to an action
         phaser.input.keyboard.on(this.keys[name][controlsID], callback);
@@ -269,8 +270,19 @@ function Snake(sprite) {
         if (this.direction !== null) {
             if (this.timer >= this.PERIOD) {
                 // Every this.PERIOD frames, move snake by moving tail to desired new head position
+                switch (this.headShade) {
+                    case "":
+                        this.headShade = "Light";
+                        break;
+                    case "Light":
+                        this.headShade = "Dark";
+                        break;
+                    case "Dark":
+                        this.headShade = "";
+                        break;
+                }
                 let newBody = new Body(head.coors.x + this.direction.x,
-                    head.coors.y + this.direction.y, 0, 0, this.getSprite());
+                    head.coors.y + this.direction.y, 0, 0, this.getSprite() + this.headShade);
                 newBody.init(phaser);
                 this.bodies.push(newBody);
                 this.bodies.splice(0, 1)[0].body.destroy();
@@ -280,7 +292,7 @@ function Snake(sprite) {
                 this.timer++;
             }
             // Kill if out of bounds
-            if (head.pos.x <= -1 || head.pos.x >= 705 || head.pos.y <= -1 || head.pos.y >= 705) {
+            if (head.pos.x < 10 || head.pos.x > 714 || head.pos.y < 10 || head.pos.y > 714) {
                 alive = false;
             }
             let h = head.pos,
@@ -345,10 +357,12 @@ function generatePortals(phaser, levels) {
         let portal1 = new Portal(pos1.x, pos1.y, l,
             to1.x, to1.y, toZ1, 'portal' + l);
         portal1.init(phaser);
+        portal1.body.setAngularVelocity(500);
 
         let portal2 = new Portal(pos2.x, pos2.y, l,
             to2.x, to2.y, toZ2, 'portal' + l);
         portal2.init(phaser);
+        portal2.body.setAngularVelocity(500);
 
         portals.push(portal1);
         portals.push(portal2);
@@ -364,29 +378,39 @@ var Game = new Phaser.Class({
     },
 
     preload: function() {
-        this.load.setBaseURL('http://labs.phaser.io');
-
-        this.load.image('sky', 'assets/skies/gradient12.png');
-        this.load.image('snake', 'assets/sprites/32x32.png');
-        this.load.image('food', 'assets/sprites/aqua_ball.png');
-        this.load.image('portal', 'assets/sprites/orb-green.png');
+        this.load.image('sky', 'assets/grid.png');
+        this.load.image('snake', 'assets/blue.png');
+        this.load.image('food', 'assets/blueLight.png');
+        this.load.image('portal', 'assets/bluePortal.png');
 
         this.load.image('sky', 'assets/skies/underwater1.png');
-        this.load.image('snake1', 'assets/sprites/copy-that-floppy.png');
-        this.load.image('snake2', 'assets/sprites/128x128.png');
-        this.load.image('snake3', 'assets/sprites/fmship.png');
-        this.load.image('snake4', 'assets/sprites/longarrow.png');
-        this.load.image('snake5', 'assets/sprites/orb-green.png');
-        this.load.image('snake6', 'assets/sprites/rick.png');
-        this.load.image('portal1', 'assets/sprites/car-police.png');
-        this.load.image('portal2', 'assets/sprites/xenon2_ship.png');
-        this.load.image('portal3', 'assets/sprites/mask1.png');
-        this.load.image('portal4', 'assets/sprites/strip1.png');
-        this.load.image('portal5', 'assets/sprites/tinycar.png');
-        this.load.image('portal6', 'assets/sprites/wabbit.png');
+        this.load.image('snake1', 'assets/purple.png');
+        this.load.image('snake1Light', 'assets/purpleLight.png');
+        this.load.image('snake1Dark', 'assets/purpleDark.png');
+        this.load.image('snake2', 'assets/blue.png');
+        this.load.image('snake2Light', 'assets/blueLight.png');
+        this.load.image('snake2Dark', 'assets/blueDark.png');
+        this.load.image('snake3', 'assets/green.png');
+        this.load.image('snake3Light', 'assets/greenLight.png');
+        this.load.image('snake3Dark', 'assets/greenDark.png');
+        this.load.image('snake4', 'assets/yellow.png');
+        this.load.image('snake4Light', 'assets/yellowLight.png');
+        this.load.image('snake4Dark', 'assets/yellowDark.png');
+        this.load.image('snake5', 'assets/orange.png');
+        this.load.image('snake5Light', 'assets/orangeLight.png');
+        this.load.image('snake5Dark', 'assets/orangeDark.png');
+        this.load.image('snake6', 'assets/red.png');
+        this.load.image('snake6Light', 'assets/redLight.png');
+        this.load.image('snake6Dark', 'assets/redDark.png');
+        this.load.image('portal1', 'assets/purplePortal.png');
+        this.load.image('portal2', 'assets/bluePortal.png');
+        this.load.image('portal3', 'assets/greenPortal.png');
+        this.load.image('portal4', 'assets/yellowPortal.png');
+        this.load.image('portal5', 'assets/orangePortal.png');
+        this.load.image('portal6', 'assets/redPortal.png');
     },
     create: async function() {
-        this.add.image(350, 350, 'sky');
+        this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
 
         for (var i = 0; i < 2; i++) {
             snakes.push(new Snake('snake'));
@@ -428,12 +452,11 @@ var MainMenu = new Phaser.Class({
         });
     },
     preload: function() {
-        this.load.setBaseURL('http://labs.phaser.io');
-        this.load.image('msky', 'assets/skies/gradient11.png');
-        this.load.image('snake', 'assets/sprites/32x32.png');
+        this.load.image('msky', 'assets/title.png');
+        this.load.image('snake', 'assets/blue.png');
     },
     create: function() {
-        this.add.image(350, 350, 'msky');
+        this.add.image(362, 362, 'msky').setDisplaySize(724, 724);
 
         const greeting = this.add.text(30, 100, 'WELCOME TO NAAGIN 2.0', {
             fontSize: '50px'
@@ -463,7 +486,7 @@ var GameOver = new Phaser.Class({
         this.load.image('msky', 'assets/skies/gradient11.png');
     },
     create: function() {
-        this.add.image(350, 350, 'msky');
+        this.add.image(362, 362, 'msky').setDisplaySize(724, 724);
         let clickCount = 0;
         this.clickCountText = this.add.text(100, 200, '');
 
@@ -485,8 +508,8 @@ var GameOver = new Phaser.Class({
 
 var config = {
     type: Phaser.AUTO,
-    width: C * GRID_SIZE,
-    height: R * GRID_SIZE,
+    width: C * GRID_SIZE + 20,
+    height: R * GRID_SIZE + 20,
     physics: {
         default: 'arcade',
         arcade: {}
