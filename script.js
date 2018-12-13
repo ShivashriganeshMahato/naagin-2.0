@@ -1,8 +1,6 @@
 var Vector2 = Phaser.Math.Vector2;
 var Vector3 = Phaser.Math.Vector3;
 
-var alive = true;
-
 var GRID_SIZE = 32;
 var R = C = 22; // Rows, Columns
 
@@ -202,12 +200,13 @@ Food.prototype.update = function(phaser, snakes) {
     });
 }
 
-function Snake(sprite) {
+function Snake(x, y, sprite) {
+    this.alive = true;
     this.z = 1;
     this.getSprite = function() {
         return sprite + this.z.toString();
     }
-    this.bodies = [new Body(0, 0, 0, 0, this.getSprite()), new Body(1, 0, 0, 0, this.getSprite()), new Body(2, 0, 0, 0, this.getSprite())];
+    this.bodies = [new Body(x, y, 0, 0, this.getSprite())];
     this.timer = 0;
     this.isTeleporting = false;
     this.direction = null;
@@ -293,7 +292,7 @@ function Snake(sprite) {
             }
             // Kill if out of bounds
             if (head.pos.x < 10 || head.pos.x > 714 || head.pos.y < 10 || head.pos.y > 714) {
-                alive = false;
+                this.alive = false;
             }
             let h = head.pos,
                 S = GRID_SIZE / 2,
@@ -303,7 +302,8 @@ function Snake(sprite) {
                 let b = c[i - 2].pos;
                 if (h.x + S > b.x - S && h.x - S < b.x + S &&
                     h.y + S > b.y - S && h.y - S < b.y + S) {
-                    alive = false;
+                    snakes[0].alive = false;
+                    snakes[1].alive = false;
                 }
             }
         }
@@ -413,7 +413,7 @@ var Game = new Phaser.Class({
         this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
 
         for (var i = 0; i < 2; i++) {
-            snakes.push(new Snake('snake'));
+            snakes.push(new Snake(1,i,'snake'));
             snakes[i].init(this, i);
             labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
                 fontSize: '20px'
@@ -429,7 +429,8 @@ var Game = new Phaser.Class({
         for (var i = 0; i < snakes.length; i++) {
             labels[i].setText('Snake ' + (i + 1) + ' Score: ' + (snakes[i].bodies.length - 1));
         }
-        if (alive) {
+        if (snakes[0].alive && snakes[1].alive) {
+            console.log(snakes[0].alive);
             food.update(this, snakes);
             snakes.forEach(snake => {
                 snake.update(this);
@@ -439,7 +440,14 @@ var Game = new Phaser.Class({
             });
         } else {
             this.scene.start('egame');
-            alive = true;
+
+            snakes = [];
+            food = null;
+
+            this.create();
+
+            snakes[0].alive = true;
+            snakes[1].alive = true;
         }
     }
 });
