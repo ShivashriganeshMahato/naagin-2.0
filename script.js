@@ -430,7 +430,7 @@ var Game = new Phaser.Class({
             labels[i].setText('Snake ' + (i + 1) + ' Score: ' + (snakes[i].bodies.length - 1));
         }
         if (snakes[0].alive && snakes[1].alive) {
-            console.log(snakes[0].alive);
+            //console.log(snakes[0].alive);
             food.update(this, snakes);
             snakes.forEach(snake => {
                 snake.update(this);
@@ -476,8 +476,17 @@ var MainMenu = new Phaser.Class({
             })
             .setInteractive()
             .on('pointerdown', function(event) {
-                this.scene.start('game');
+                this.scene.start('settings');
             }, this);
+
+            const highButton = this.add.text(200, 350, 'High Scores', {
+                    fill: '#0036FF',
+                    fontSize: '32px'
+                })
+                .setInteractive()
+                .on('pointerdown', function(event) {
+                    this.scene.start('highscore');
+                }, this);
     },
     update: function() {}
 });
@@ -513,6 +522,63 @@ var GameOver = new Phaser.Class({
     update: function() {}
 });
 
+var HighScore = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function() {
+        Phaser.Scene.call(this, {
+            key: 'highscore'
+        });
+    },
+    preload: function() {
+        this.load.setBaseURL('http://labs.phaser.io');
+        this.load.image('ksky', 'assets/skies/gradient11.png');
+    },
+    create: function() {
+        this.add.image(362, 362, 'ksky').setDisplaySize(724, 724);
+
+        const alert = this.add.text(150, 100, 'HIGH SCORE', {
+            fontSize: '50px'
+        });
+
+        const clickButton = this.add.text(10, 10, 'Go Back', {
+                fontSize: '32px'
+            })
+            .setInteractive()
+            .on('pointerdown', function(event) {
+                this.scene.start('mgame');
+            }, this);
+    },
+    update: function() {}
+});
+
+var Settings = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function() {
+        Phaser.Scene.call(this, {
+            key: 'settings'
+        });
+    },
+    preload: function() {
+        this.load.setBaseURL('http://labs.phaser.io');
+        this.load.image('ksky', 'assets/skies/gradient11.png');
+    },
+    create: function() {
+        this.add.image(362, 362, 'ksky').setDisplaySize(724, 724);
+
+        const alert = this.add.text(150, 100, 'Settings', {
+            fontSize: '50px'
+        });
+
+        const clickButton = this.add.text(10, 10, 'Play!', {
+                fontSize: '32px'
+            })
+            .setInteractive()
+            .on('pointerdown', function(event) {
+                this.scene.start('game');
+            }, this);
+    },
+    update: function() {}
+});
 
 var config = {
     type: Phaser.AUTO,
@@ -522,7 +588,7 @@ var config = {
         default: 'arcade',
         arcade: {}
     },
-    scene: [MainMenu, Game, GameOver]
+    scene: [MainMenu, Settings, HighScore, Game, GameOver]
 };
 
 var game = new Phaser.Game(config);
