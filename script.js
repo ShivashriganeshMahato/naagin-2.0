@@ -146,7 +146,7 @@ Portal.prototype.connectTo = function(oPortal) {
     oPortal.to.set(this.coors.x, this.coors.y, this.coors.z);
 };
 Portal.prototype.update = function(phaser, snakes) {
-    let isSnakeOnLevel = false;
+    let isSnakeOnLevel = false, transported = false;
 
     snakes.forEach(snake => {
         if (snake.z !== this.coors.z) {
@@ -169,35 +169,70 @@ Portal.prototype.update = function(phaser, snakes) {
             head.pos.set(10 + GRID_SIZE / 2 + GRID_SIZE * this.to.x,
                 10 + GRID_SIZE / 2 + GRID_SIZE * this.to.y);
             snake.isTeleporting = true;
+            if (snake.direction.equals(snake.directions.LEFT)) {
+                if (this.to.x < 5) {
+                    snake.direction = snake.directions.RIGHT;
+                }
+            } else if (snake.direction.equals(snake.directions.RIGHT)) {
+                if (this.to.x > C - 6) {
+                    snake.direction = snake.directions.LEFT;
+                }
+            } else if (snake.direction.equals(snake.directions.UP)) {
+                if (this.to.y < 5) {
+                    snake.direction = snake.directions.DOWN;
+                }
+            } else {
+                if (this.to.y > R - 6) {
+                    snake.direction = snake.directions.UP;
+                }
+            }
+            transported = true;
         }
     });
+
+    if (transported) {
+        levelSprites.forEach(sprite => {
+            sprite.visible = false;
+        });
+        snakes.forEach(snake => {
+            levelSprites[6 - snake.z].visible = true;
+        });
+    }
 
     this.body.visible = isSnakeOnLevel;
 };
 
 function Food(sprite) {
-    Body.call(this, random(0, C - 1), random(0, R - 1), 0, 0, sprite);
+    Body.call(this, random(0, C - 1), random(0, R - 1), 0, 0, sprite, random(1, 6));
 }
 Food.prototype = Object.create(Body.prototype);
 Food.prototype.update = function(phaser, snakes) {
+    let isSnakeOnLevel = false;
+
     snakes.forEach(snake => {
         let head = snake.bodies[snake.bodies.length - 1],
             h = head.pos,
             b = this.body,
             S = GRID_SIZE / 2;
-        // Check collision
-        if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
-            h.y + S > b.y - S && h.y - S < b.y + S) {
-            snake.addBody(phaser);
-            //this.body.destroy();
-            let x = random(0, C - 1),
-                y = random(0, R - 1);
+        if (this.coors.z === snake.z) {
+            isSnakeOnLevel = true;
 
-            this.coors.set(x, y);
-            this.body.setPosition(10 + GRID_SIZE / 2 + GRID_SIZE * x,
-                10 + GRID_SIZE / 2 + GRID_SIZE * y);
+            // Check collision
+            if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
+                h.y + S > b.y - S && h.y - S < b.y + S) {
+                snake.addBody(phaser);
+                //this.body.destroy();
+                let x = random(0, C - 1),
+                    y = random(0, R - 1);
+
+                this.coors.set(x, y, random(1, 6));
+                this.body.setPosition(10 + GRID_SIZE / 2 + GRID_SIZE * x,
+                    10 + GRID_SIZE / 2 + GRID_SIZE * y);
+            }
         }
     });
+
+    this.body.visible = isSnakeOnLevel;
 }
 
 function Snake(x, y, sprite) {
@@ -314,11 +349,16 @@ function Snake(x, y, sprite) {
         newBody.init(phaser);
         this.bodies.unshift(newBody);
     }
+    this.destroy = function() {
+        this.bodies.forEach(body => {
+            body.body.destroy();
+        });
+    }
 }
 
 var snakes = [],
     food, portals = [],
-    labels = [];
+    labels = [], levelSprites = [];
 
 function generatePortals(phaser, levels) {
     let positions = [];
@@ -380,7 +420,7 @@ var Game = new Phaser.Class({
     preload: function() {
         this.load.image('sky', 'assets/grid.png');
         this.load.image('snake', 'assets/blue.png');
-        this.load.image('food', 'assets/blueLight.png');
+        this.load.image('food', 'assets/food.png');
         this.load.image('portal', 'assets/bluePortal.png');
 
         this.load.image('sky', 'assets/skies/underwater1.png');
@@ -408,9 +448,25 @@ var Game = new Phaser.Class({
         this.load.image('portal4', 'assets/yellowPortal.png');
         this.load.image('portal5', 'assets/orangePortal.png');
         this.load.image('portal6', 'assets/redPortal.png');
+        this.load.image('mapBack', 'assets/mapBack.png');
+        this.load.image('mapFront', 'assets/mapFront.png');
+        this.load.image('level1', 'assets/map1.png');
+        this.load.image('level2', 'assets/map2.png');
+        this.load.image('level3', 'assets/map3.png');
+        this.load.image('level4', 'assets/map4.png');
+        this.load.image('level5', 'assets/map5.png');
+        this.load.image('level6', 'assets/map6.png');
     },
     create: async function() {
         this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
+
+        this.add.image(650, 90, 'mapBack').setDisplaySize(80, 128);
+        for (var i = 6; i >= 1; i--) {
+            levelSprites.push(this.add.image(650, 90, 'level' + i).setDisplaySize(80, 128));
+            if (i !== 1)
+                levelSprites[6 - i].visible = false;
+        }
+        this.add.image(650, 90, 'mapFront').setDisplaySize(80, 128);
 
         for (var i = 0; i < 2; i++) {
             snakes.push(new Snake(1,i,'snake'));
@@ -439,12 +495,17 @@ var Game = new Phaser.Class({
                 portal.update(this, snakes);
             });
         } else {
+            snakes.forEach(snake => {
+                snake.destroy();
+            });
+            portals.forEach(snake => {
+                snake.body.destroy();
+            });
+
             this.scene.start('egame');
 
-            snakes = [];
+            snakes.splice(0, snakes.length);
             food = null;
-
-            this.create();
 
             snakes[0].alive = true;
             snakes[1].alive = true;
