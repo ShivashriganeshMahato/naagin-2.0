@@ -597,6 +597,8 @@ var Game = new Phaser.Class({
                 portal.update(this, snakes);
             });
         } else {
+            game.sound.stopAll();
+
             this.scene.start('egame');
 
             let score = 0;
