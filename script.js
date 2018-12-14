@@ -528,7 +528,8 @@ var MainMenu = new Phaser.Class({
         this.load.image('snake', 'assets/blue.png');
     },
     create: function() {
-        ScoreManager.init();
+        if (!ScoreManager.db)
+            ScoreManager.init();
 
         this.add.image(362, 362, 'msky').setDisplaySize(724, 724);
 
