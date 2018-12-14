@@ -10,6 +10,7 @@ function random(a, b) {
 }
 
 var ScoreManager = {
+    score: 0,
     init: function() {
         // Initialize Firebase
         var config = {
@@ -62,11 +63,11 @@ var ScoreManager = {
     // then accept boolean (was user successfully created?)
     createUser: async function(username, pwd) {
         return new Promise(resolve => {
-            let doesUserExist = this.doesUserExist(username);
-            if (doesUserExist) {
-                console.log("User with username " + username + " already exists")
-                resolve(false);
-            }
+            // let doesUserExist = this.doesUserExist(username);
+            // if (doesUserExist) {
+            //     console.log("User with username " + username + " already exists")
+            //     resolve(false);
+            // }
             this.users.add({
                 username: username,
                 password: hex_sha1(pwd)
@@ -505,6 +506,9 @@ var Game = new Phaser.Class({
                 snake.body.destroy();
             });
 
+            ScoreManager.score = Math.max(snakes[0].bodies.length - 1,
+                snakes[1].bodies.length - 1);
+            $('#scoreForm').removeClass('d-none');
             this.scene.start('egame');
 
             snakes.splice(0, snakes.length);

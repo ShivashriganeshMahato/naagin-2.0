@@ -8,17 +8,78 @@
     <script src="//cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser.min.js"></script>
     <script src="//passwordsgenerator.net/sha1-hash-generator/js/sha1.js"></script>
     <script src="//www.gstatic.com/firebasejs/5.7.0/firebase.js"></script>
+    <link href="//stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <script src="//stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <script src="//code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
 
     <style>
         body {
             background: #2d2d30;
             text-align: center;
         }
+
+        #scoreForm {
+            margin: auto;
+            margin-bottom: 20px;
+            margin-top: 30px;
+        }
     </style>
 </head>
 
 <body>
+    <form class="w-25 d-none" id="scoreForm">
+        <p class="text-white">Save your score <button type="button" class="btn btn-danger" id="cancelBtn">Cancel</button></p>
+        <div class="form-group">
+            <input type="text" class="form-control" id="usernameInput" placeholder="Enter username">
+        </div>
+        <button type="button" id="continueBtn" class="btn btn-primary">Continue</button>
+        <div id="pwdElements" class="d-none">
+            <br>
+            <div class="form-group">
+                <input type="password" class="form-control" id="passwordInput" placeholder="Enter password">
+            </div>
+            <button id="submitBtn" type="button" class="btn btn-primary">Submit</button>
+        </div>
+    </form>
     <script src="script.js"></script>
+    <script>
+        $(function() {
+            var exists;
+
+            $('#cancelBtn').click(function() {
+                $('#scoreForm').hide();
+            })
+
+            $('#continueBtn').click(async function() {
+                exists = await ScoreManager.doesUserExist($('#usernameInput').val());
+                $('#pwdElements').removeClass('d-none');
+                $('#continueBtn').hide();
+            })
+
+            $('#submitBtn').click(async function() {
+                let username = $('#usernameInput').val(),
+                    pwd = $('#passwordInput').val();
+                if (exists) {
+                    if (!(await ScoreManager.authenticate(username, pwd))) {
+                        alert("Incorrect password");
+                        return;
+                    } else {
+                        await ScoreManager.setScore(username, ScoreManager.score);
+                        alert("Successfully updated score");
+                    }
+                } else {
+                    if (await ScoreManager.createUser(username, pwd)) {
+                        await ScoreManager.setScore(username, ScoreManager.score);
+                        alert("Successfully added score");
+                    } else {
+                        alert("A user with that username already exists");
+                    }
+                }
+                $('#scoreForm').addClass('d-none');
+                $('#continueBtn').show();
+            })
+        });
+    </script>
 </body>
 
 </html>
