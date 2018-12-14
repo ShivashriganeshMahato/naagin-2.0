@@ -561,7 +561,7 @@ var Game = new Phaser.Class({
         generatePortals(this, 6);
     },
     update: async function() {
-        if (frameCount % 50 === 0) {
+        if (frameCount % 100 === 0) {
             let pUp = new PowerUp('powerup');
             pUp.init(this, snakes);
             powerUps.push(pUp);
