@@ -1,6 +1,8 @@
 var Vector2 = Phaser.Math.Vector2;
 var Vector3 = Phaser.Math.Vector3;
 
+var music;
+
 var theme = "";
 
 var GRID_SIZE = 32;
@@ -354,7 +356,7 @@ function Snake(x, y, sprite, normal) {
 
     this.kill = function(snake2){
         let head = this.bodies[this.bodies.length - 1];
-        console.log(snake2);
+        //console.log(snake2);
         let h = head.pos,
             S = GRID_SIZE / 2,
             c = snake2.bodies;
@@ -445,6 +447,8 @@ var Game = new Phaser.Class({
     },
 
     preload: function() {
+        this.load.audio('song', ['song.mp3']);
+
         this.load.image('sky', 'assets/grid.png');
         this.load.image('snake', 'assets/blue.png');
         this.load.image('food', 'assets/food.png');
@@ -486,6 +490,9 @@ var Game = new Phaser.Class({
         this.load.image('level6', 'assets/map6.png');
     },
     create: async function() {
+        this.sound.add('song');
+        this.sound.play('song');
+
         this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
 
         for (var i = 0; i < 1; i++) {
