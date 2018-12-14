@@ -170,6 +170,7 @@ Portal.prototype.update = function(phaser, snakes) {
         // Check collision
         if (!snake.isTeleporting && this.body.visible && h.x + S > b.x - S &&
             h.x - S < b.x + S && h.y + S > b.y - S && h.y - S < b.y + S) {
+            game.sound.play('teleport');
             // Teleport head, body will follow
             snake.z = this.to.z;
             head.coors.set(this.to.x, this.to.y, snake.z);
@@ -271,6 +272,7 @@ function Snake(x, y, sprite, normal) {
         phaser.input.keyboard.on(this.keys[name][controlsID], callback);
     }
     this.init = function(phaser, controlsID) {
+
         this.bodies.forEach(body => {
             body.init(phaser);
         });
@@ -339,6 +341,7 @@ function Snake(x, y, sprite, normal) {
 
         if (head.pos.x < 10 || head.pos.x > 714 || head.pos.y < 10 || head.pos.y > 714) {
             this.alive = false;
+            game.sound.play('kill');
         }
 
         let h = head.pos,
@@ -350,6 +353,7 @@ function Snake(x, y, sprite, normal) {
             if (h.x + S > b.x - S && h.x - S < b.x + S &&
                 h.y + S > b.y - S && h.y - S < b.y + S) {
                 snakes[0].alive = false;
+                game.sound.play('kill');
                 snakes[1].alive = false;
             }
         }
@@ -366,6 +370,7 @@ function Snake(x, y, sprite, normal) {
             let b = c[i - 2].pos;
             if (this.z == snake2.z && h.x + S > b.x - S && h.x - S < b.x + S &&
                 h.y + S > b.y - S && h.y - S < b.y + S) {
+                game.sound.play('kill');
                 snakes[0].alive = false;
                 snakes[1].alive = false;
             }
@@ -373,6 +378,7 @@ function Snake(x, y, sprite, normal) {
     }
 
     this.addBody = function(phaser) {
+        game.sound.play('eat');
         let tail = this.bodies[0];
         let newBody = new Body(tail.coors.x, tail.coors.y, 0, 0, this.getSprite());
         newBody.init(phaser);
@@ -448,7 +454,10 @@ var Game = new Phaser.Class({
     },
 
     preload: function() {
-        this.load.audio('song', ['song.mp3']);
+        this.load.audio('song', ['music/song.mp3']);
+        this.load.audio('eat','music/Food.mp3');
+        this.load.audio('kill','music/Kill.mp3');
+        this.load.audio('teleport','music/Portal.mp3');
 
         this.load.image('sky', 'assets/grid.png');
         this.load.image('snake', 'assets/blue.png');
@@ -492,6 +501,10 @@ var Game = new Phaser.Class({
     },
     create: async function() {
         this.sound.add('song');
+        this.sound.add('eat');
+        this.sound.add('kill');
+        this.sound.add('portal');
+
         this.sound.play('song');
 
         this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
