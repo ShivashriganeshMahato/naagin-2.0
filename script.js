@@ -257,10 +257,10 @@ function Snake(x, y, sprite, normal) {
         DOWN: new Vector2(0, 1)
     };
     this.keys = {
-        left: ["keydown_A", "keydown_J", "keydown_left", "keydown_F"],
-        right: ["keydown_D", "keydown_L", "keydown_right", "keydown_H"],
-        up: ["keydown_W", "keydown_I", "keydown_up", "keydown_T"],
-        down: ["keydown_S", "keydown_K", "keydown_down", "keydown_G"]
+        left: ["keydown_A", "keydown_J", "keydown_F"],
+        right: ["keydown_D", "keydown_L", "keydown_H"],
+        up: ["keydown_W", "keydown_I", "keydown_T"],
+        down: ["keydown_S", "keydown_K", "keydown_G"]
     };
     this.PERIOD = 7;
     this.headShade = "";
@@ -541,7 +541,7 @@ var Game = new Phaser.Class({
             portals.splice(0,portals.length);
             food = null;
 
-            snakes[0].alive = true;
+            // snakes[0].alive = true;
             //snakes[1].alive = true;
         }
     }
@@ -702,14 +702,14 @@ var Settings = new Phaser.Class({
                 gameMode = "Double";
                 this.scene.start('game');
             }, this);
-        const clickCo = this.add.text(260, 450, 'Play CoOP!', {
-                fontSize: '32px'
-            })
-            .setInteractive()
-            .on('pointerdown', function(event) {
-                gameMode = "Coop";
-                this.scene.start('game');
-            }, this);
+        // const clickCo = this.add.text(260, 450, 'Play CoOP!', {
+        //         fontSize: '32px'
+        //     })
+        //     .setInteractive()
+        //     .on('pointerdown', function(event) {
+        //         gameMode = "Coop";
+        //         this.scene.start('game');
+        //     }, this);
     },
     update: function() {}
 });
