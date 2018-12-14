@@ -242,6 +242,34 @@ Food.prototype.update = function(phaser, snakes) {
     this.body.visible = isSnakeOnLevel;
 }
 
+function PowerUp(sprite) {
+    Body.call(this, random(0, C - 1), random(0, R - 1), 0, 0, sprite, random(1, 6));
+}
+PowerUp.prototype = Object.create(Body.prototype);
+PowerUp.prototype.update = function(phaser, snakes) {
+    let isSnakeOnLevel = false;
+
+    snakes.forEach(snake => {
+        let head = snake.bodies[snake.bodies.length - 1],
+            h = head.pos,
+            b = this.body,
+            S = GRID_SIZE / 2;
+        if (this.coors.z === snake.z) {
+            isSnakeOnLevel = true;
+
+            // Check collision
+            if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
+                h.y + S > b.y - S && h.y - S < b.y + S) {
+                snake.PERIOD /= 2;
+                this.body.destroy();
+                powerUps.splice(powerUps.indexOf(this), 1);
+            }
+        }
+    });
+
+    this.body.visible = isSnakeOnLevel;
+}
+
 function Snake(x, y, sprite, normal) {
     this.alive = true;
     this.z = 1;
@@ -265,6 +293,7 @@ function Snake(x, y, sprite, normal) {
         down: ["keydown_S", "keydown_K", "keydown_G"]
     };
     this.PERIOD = 7;
+    this.pUpTimer = 0;
     this.headShade = "";
     this.bindKey = function(phaser, name, controlsID, callback) {
         // Bind appropriate key code to an action
@@ -304,6 +333,15 @@ function Snake(x, y, sprite, normal) {
         })
     }
     this.update = function(phaser) {
+        if (this.PERIOD !== 7) {
+            this.pUpTimer++;
+        }
+        console.log(this.pUpTimer);
+        if (this.pUpTimer >= 500) {
+            this.PERIOD = 7;
+            this.pUpTimer = 0;
+        }
+
         let head = this.bodies[this.bodies.length - 1];
         if (this.direction !== null) {
             if (this.timer >= this.PERIOD) {
@@ -386,9 +424,10 @@ function Snake(x, y, sprite, normal) {
 }
 
 var snakes = [],
-food, portals = [],
-labels = [],
-levelSprites = [];
+    food, portals = [],
+    labels = [],
+    levelSprites = [],
+    powerUps = [];
 
 function generatePortals(phaser, levels) {
     let positions = [];
@@ -438,6 +477,8 @@ function generatePortals(phaser, levels) {
         portals.push(portal2);
     }
 }
+
+var frameCount = 0;
 
 var Game = new Phaser.Class({
     Extends: Phaser.Scene,
@@ -489,6 +530,7 @@ var Game = new Phaser.Class({
         this.load.image('level4', 'assets/map4.png');
         this.load.image('level5', 'assets/map5.png');
         this.load.image('level6', 'assets/map6.png');
+        this.load.image('powerup', 'assets/powerup.png');
     },
     create: async function() {
         this.sound.add('song');
@@ -519,6 +561,16 @@ var Game = new Phaser.Class({
         generatePortals(this, 6);
     },
     update: async function() {
+        if (frameCount % 50 === 0) {
+            let pUp = new PowerUp('powerup');
+            pUp.init(this, snakes);
+            powerUps.push(pUp);
+        }
+
+        powerUps.forEach(powerUp => {
+            powerUp.update(this, snakes);
+        })
+
         for (var i = 0; i < snakes.length; i++) {
             labels[i].setText('Snake ' + (i + 1) + ' Score: ' + (snakes[i].bodies.length - 1));
         }
@@ -534,6 +586,17 @@ var Game = new Phaser.Class({
         } else {
             this.scene.start('egame');
 
+            let score = 0;
+            if (snakes.length === 1) {
+                score = snakes[0].bodies.length - 1;
+            } else {
+                score = Math.max(snakes[0].bodies.length - 1,
+                    snakes[1].bodies.length - 1);;
+            }
+
+            ScoreManager.score = score;
+            $('#scoreForm').removeClass('d-none');
+
             for(var i = 0; i < snakes.length; i++){
                 for(var j = 0; j < snakes[i].length;i++){
                     snakes[i].bodies[j].body.destroy();
@@ -548,9 +611,16 @@ var Game = new Phaser.Class({
             portals.splice(0,portals.length);
             food = null;
 
+            levelSprites.forEach(sprite => {
+                sprite.destroy();
+            })
+            levelSprites.splice(0, levelSprites.length);
+
             // snakes[0].alive = true;
             //snakes[1].alive = true;
         }
+
+        frameCount++;
     }
 });
 
