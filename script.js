@@ -12,6 +12,7 @@ function random(a, b) {
 }
 
 var ScoreManager = {
+    score: 0,
     init: function() {
         // Initialize Firebase
         var config = {
@@ -64,11 +65,11 @@ var ScoreManager = {
     // then accept boolean (was user successfully created?)
     createUser: async function(username, pwd) {
         return new Promise(resolve => {
-            let doesUserExist = this.doesUserExist(username);
-            if (doesUserExist) {
-                console.log("User with username " + username + " already exists")
-                resolve(false);
-            }
+            // let doesUserExist = this.doesUserExist(username);
+            // if (doesUserExist) {
+            //     console.log("User with username " + username + " already exists")
+            //     resolve(false);
+            // }
             this.users.add({
                 username: username,
                 password: hex_sha1(pwd)
@@ -148,7 +149,8 @@ Portal.prototype.connectTo = function(oPortal) {
     oPortal.to.set(this.coors.x, this.coors.y, this.coors.z);
 };
 Portal.prototype.update = function(phaser, snakes) {
-    let isSnakeOnLevel = false;
+    let isSnakeOnLevel = false,
+        transported = false;
 
     snakes.forEach(snake => {
         if (snake.z !== this.coors.z) {
@@ -171,35 +173,70 @@ Portal.prototype.update = function(phaser, snakes) {
             head.pos.set(10 + GRID_SIZE / 2 + GRID_SIZE * this.to.x,
                 10 + GRID_SIZE / 2 + GRID_SIZE * this.to.y);
             snake.isTeleporting = true;
+            if (snake.direction.equals(snake.directions.LEFT)) {
+                if (this.to.x < 5) {
+                    snake.direction = snake.directions.RIGHT;
+                }
+            } else if (snake.direction.equals(snake.directions.RIGHT)) {
+                if (this.to.x > C - 6) {
+                    snake.direction = snake.directions.LEFT;
+                }
+            } else if (snake.direction.equals(snake.directions.UP)) {
+                if (this.to.y < 5) {
+                    snake.direction = snake.directions.DOWN;
+                }
+            } else {
+                if (this.to.y > R - 6) {
+                    snake.direction = snake.directions.UP;
+                }
+            }
+            transported = true;
         }
     });
+
+    if (transported) {
+        levelSprites.forEach(sprite => {
+            sprite.visible = false;
+        });
+        snakes.forEach(snake => {
+            levelSprites[6 - snake.z].visible = true;
+        });
+    }
 
     this.body.visible = isSnakeOnLevel;
 };
 
 function Food(sprite) {
-    Body.call(this, random(0, C - 1), random(0, R - 1), 0, 0, sprite);
+    Body.call(this, random(0, C - 1), random(0, R - 1), 0, 0, sprite, random(1, 6));
 }
 Food.prototype = Object.create(Body.prototype);
 Food.prototype.update = function(phaser, snakes) {
+    let isSnakeOnLevel = false;
+
     snakes.forEach(snake => {
         let head = snake.bodies[snake.bodies.length - 1],
             h = head.pos,
             b = this.body,
             S = GRID_SIZE / 2;
-        // Check collision
-        if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
-            h.y + S > b.y - S && h.y - S < b.y + S) {
-            snake.addBody(phaser);
-            //this.body.destroy();
-            let x = random(0, C - 1),
-                y = random(0, R - 1);
+        if (this.coors.z === snake.z) {
+            isSnakeOnLevel = true;
 
-            this.coors.set(x, y);
-            this.body.setPosition(10 + GRID_SIZE / 2 + GRID_SIZE * x,
-                10 + GRID_SIZE / 2 + GRID_SIZE * y);
+            // Check collision
+            if (!snake.isTeleporting && h.x + S > b.x - S && h.x - S < b.x + S &&
+                h.y + S > b.y - S && h.y - S < b.y + S) {
+                snake.addBody(phaser);
+                //this.body.destroy();
+                let x = random(0, C - 1),
+                    y = random(0, R - 1);
+
+                this.coors.set(x, y, random(1, 6));
+                this.body.setPosition(10 + GRID_SIZE / 2 + GRID_SIZE * x,
+                    10 + GRID_SIZE / 2 + GRID_SIZE * y);
+            }
         }
     });
+
+    this.body.visible = isSnakeOnLevel;
 }
 
 function Snake(x, y, sprite, normal) {
@@ -338,11 +375,17 @@ function Snake(x, y, sprite, normal) {
         newBody.init(phaser);
         this.bodies.unshift(newBody);
     }
+    this.destroy = function() {
+        this.bodies.forEach(body => {
+            body.body.destroy();
+        });
+    }
 }
 
     var snakes = [],
     food, portals = [],
-    labels = [];
+    labels = [],
+    levelSprites = [];
 
 function generatePortals(phaser, levels) {
     let positions = [];
@@ -404,8 +447,9 @@ var Game = new Phaser.Class({
     preload: function() {
         this.load.image('sky', 'assets/grid.png');
         this.load.image('snake', 'assets/blue.png');
-        this.load.image('food', 'assets/blueLight.png');
+        this.load.image('food', 'assets/food.png');
         this.load.image('portal', 'assets/bluePortal.png');
+        this.load.image('gameOver', 'assets/gameOver.png');
 
         this.load.image('sky', 'assets/skies/underwater1.png');
         this.load.image('snake1', 'assets/purple.png');
@@ -432,6 +476,14 @@ var Game = new Phaser.Class({
         this.load.image('portal4', 'assets/yellowPortal.png');
         this.load.image('portal5', 'assets/orangePortal.png');
         this.load.image('portal6', 'assets/redPortal.png');
+        this.load.image('mapBack', 'assets/mapBack.png');
+        this.load.image('mapFront', 'assets/mapFront.png');
+        this.load.image('level1', 'assets/map1.png');
+        this.load.image('level2', 'assets/map2.png');
+        this.load.image('level3', 'assets/map3.png');
+        this.load.image('level4', 'assets/map4.png');
+        this.load.image('level5', 'assets/map5.png');
+        this.load.image('level6', 'assets/map6.png');
     },
     create: async function() {
         this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
@@ -526,10 +578,16 @@ var DoubleGame = new Phaser.Class({
         this.load.image('portal6', 'assets/redPortal.png');
     },
     create: async function() {
-        this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
+        this.add.image(650, 90, 'mapBack').setDisplaySize(80, 128);
+        for (var i = 6; i >= 1; i--) {
+            levelSprites.push(this.add.image(650, 90, 'level' + i).setDisplaySize(80, 128));
+            if (i !== 1)
+                levelSprites[6 - i].visible = false;
+        }
+        this.add.image(650, 90, 'mapFront').setDisplaySize(80, 128);
 
         for (var i = 0; i < 2; i++) {
-            snakes.push(new Snake(1,i,'snake',true));
+            snakes.push(new Snake(1, i, 'snake'));
             snakes[i].init(this, i);
             labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
                 fontSize: '20px'
@@ -556,6 +614,16 @@ var DoubleGame = new Phaser.Class({
             });
             snakes[0].kill(snakes[1]);
         } else {
+            snakes.forEach(snake => {
+                snake.destroy();
+            });
+            portals.forEach(snake => {
+                snake.body.destroy();
+            });
+
+            ScoreManager.score = Math.max(snakes[0].bodies.length - 1,
+                snakes[1].bodies.length - 1);
+            $('#scoreForm').removeClass('d-none');
             this.scene.start('egame');
 
             for(var i = 0; i < snakes.length; i++){
@@ -684,29 +752,33 @@ var MainMenu = new Phaser.Class({
         this.load.image('snake', 'assets/blue.png');
     },
     create: function() {
+        if (!ScoreManager.db)
+            ScoreManager.init();
+
         this.add.image(362, 362, 'msky').setDisplaySize(724, 724);
 
-        const greeting = this.add.text(30, 100, 'WELCOME TO NAAGIN 2.0', {
+        const greeting = this.add.text(420, 490, '2.0', {
+            fill: '#ff5757',
             fontSize: '50px'
         });
 
-        const clickButton = this.add.text(200, 300, 'Let us Play!', {
-                fill: '#0000FF',
-                fontSize: '32px'
+        const clickButton = this.add.text(360, 560, 'PLAY!', {
+                fill: '#ff5757',
+                fontSize: '60px'
             })
             .setInteractive()
             .on('pointerdown', function(event) {
                 this.scene.start('settings');
             }, this);
 
-            const highButton = this.add.text(200, 350, 'High Scores', {
-                    fill: '#0036FF',
-                    fontSize: '32px'
-                })
-                .setInteractive()
-                .on('pointerdown', function(event) {
-                    this.scene.start('highscore');
-                }, this);
+        const highButton = this.add.text(340, 630, 'High Scores', {
+                fill: '#ff5757',
+                fontSize: '32px'
+            })
+            .setInteractive()
+            .on('pointerdown', function(event) {
+                this.scene.start('highscore');
+            }, this);
     },
     update: function() {}
 });
@@ -719,19 +791,20 @@ var GameOver = new Phaser.Class({
         });
     },
     preload: function() {
-        this.load.setBaseURL('http://labs.phaser.io');
-        this.load.image('msky', 'assets/skies/gradient11.png');
+        this.load.image('gameOver', 'assets/gameOver.png');
     },
     create: function() {
-        this.add.image(362, 362, 'msky').setDisplaySize(724, 724);
+        this.add.image(362, 362, 'gameOver').setDisplaySize(724, 724);
         let clickCount = 0;
         this.clickCountText = this.add.text(100, 200, '');
 
         const alert = this.add.text(150, 100, 'YOU ARE DEAD', {
+            fill: '#ff5757',
             fontSize: '50px'
         });
 
-        const clickButton = this.add.text(220, 300, 'Play Again?', {
+        const clickButton = this.add.text(220, 350, 'Play Again?', {
+                fill: '#ff5757',
                 fontSize: '32px'
             })
             .setInteractive()
@@ -750,23 +823,41 @@ var HighScore = new Phaser.Class({
         });
     },
     preload: function() {
-        this.load.setBaseURL('http://labs.phaser.io');
-        this.load.image('ksky', 'assets/skies/gradient11.png');
+        this.load.image('screen', 'assets/highScores.png');
     },
-    create: function() {
-        this.add.image(362, 362, 'ksky').setDisplaySize(724, 724);
+    create: async function() {
+        this.add.image(362, 362, 'screen').setDisplaySize(724, 724);
 
-        const alert = this.add.text(150, 100, 'HIGH SCORE', {
+        const alert = this.add.text(150, 100, 'HIGH SCORES', {
             fontSize: '50px'
         });
 
-        const clickButton = this.add.text(10, 10, 'Go Back', {
+        const clickButton = this.add.text(10, 20, 'Go Back', {
                 fontSize: '32px'
             })
             .setInteractive()
             .on('pointerdown', function(event) {
                 this.scene.start('mgame');
             }, this);
+
+        let scores = await ScoreManager.getScores();
+
+        function compare(a, b) {
+            if (a.score < b.score)
+                return 1;
+            else if (a.score > b.score)
+                return -1;
+            return 0;
+        }
+        scores.sort(compare);
+        scores = scores.slice(0, 10);
+
+        for (var i = 0; i < scores.length; i++) {
+            this.add.text(160, 160 + i * 50,
+                '' + (i + 1) + '. ' + scores[i].username + ' - ' + scores[i].score, {
+                    fontSize: '25px'
+                });
+        }
     },
     update: function() {}
 });
