@@ -146,7 +146,8 @@ Portal.prototype.connectTo = function(oPortal) {
     oPortal.to.set(this.coors.x, this.coors.y, this.coors.z);
 };
 Portal.prototype.update = function(phaser, snakes) {
-    let isSnakeOnLevel = false, transported = false;
+    let isSnakeOnLevel = false,
+        transported = false;
 
     snakes.forEach(snake => {
         if (snake.z !== this.coors.z) {
@@ -358,7 +359,8 @@ function Snake(x, y, sprite) {
 
 var snakes = [],
     food, portals = [],
-    labels = [], levelSprites = [];
+    labels = [],
+    levelSprites = [];
 
 function generatePortals(phaser, levels) {
     let positions = [];
@@ -422,6 +424,7 @@ var Game = new Phaser.Class({
         this.load.image('snake', 'assets/blue.png');
         this.load.image('food', 'assets/food.png');
         this.load.image('portal', 'assets/bluePortal.png');
+        this.load.image('gameOver', 'assets/gameOver.png');
 
         this.load.image('sky', 'assets/skies/underwater1.png');
         this.load.image('snake1', 'assets/purple.png');
@@ -469,7 +472,7 @@ var Game = new Phaser.Class({
         this.add.image(650, 90, 'mapFront').setDisplaySize(80, 128);
 
         for (var i = 0; i < 2; i++) {
-            snakes.push(new Snake(1,i,'snake'));
+            snakes.push(new Snake(1, i, 'snake'));
             snakes[i].init(this, i);
             labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
                 fontSize: '20px'
@@ -525,29 +528,32 @@ var MainMenu = new Phaser.Class({
         this.load.image('snake', 'assets/blue.png');
     },
     create: function() {
+        ScoreManager.init();
+
         this.add.image(362, 362, 'msky').setDisplaySize(724, 724);
 
-        const greeting = this.add.text(30, 100, 'WELCOME TO NAAGIN 2.0', {
+        const greeting = this.add.text(420, 490, '2.0', {
+            fill: '#ff5757',
             fontSize: '50px'
         });
 
-        const clickButton = this.add.text(200, 300, 'Let us Play!', {
-                fill: '#0000FF',
-                fontSize: '32px'
+        const clickButton = this.add.text(360, 560, 'PLAY!', {
+                fill: '#ff5757',
+                fontSize: '60px'
             })
             .setInteractive()
             .on('pointerdown', function(event) {
                 this.scene.start('settings');
             }, this);
 
-            const highButton = this.add.text(200, 350, 'High Scores', {
-                    fill: '#0036FF',
-                    fontSize: '32px'
-                })
-                .setInteractive()
-                .on('pointerdown', function(event) {
-                    this.scene.start('highscore');
-                }, this);
+        const highButton = this.add.text(340, 630, 'High Scores', {
+                fill: '#ff5757',
+                fontSize: '32px'
+            })
+            .setInteractive()
+            .on('pointerdown', function(event) {
+                this.scene.start('highscore');
+            }, this);
     },
     update: function() {}
 });
@@ -560,19 +566,20 @@ var GameOver = new Phaser.Class({
         });
     },
     preload: function() {
-        this.load.setBaseURL('http://labs.phaser.io');
-        this.load.image('msky', 'assets/skies/gradient11.png');
+        this.load.image('gameOver', 'assets/gameOver.png');
     },
     create: function() {
-        this.add.image(362, 362, 'msky').setDisplaySize(724, 724);
+        this.add.image(362, 362, 'gameOver').setDisplaySize(724, 724);
         let clickCount = 0;
         this.clickCountText = this.add.text(100, 200, '');
 
         const alert = this.add.text(150, 100, 'YOU ARE DEAD', {
+            fill: '#ff5757',
             fontSize: '50px'
         });
 
-        const clickButton = this.add.text(220, 300, 'Play Again?', {
+        const clickButton = this.add.text(220, 350, 'Play Again?', {
+                fill: '#ff5757',
                 fontSize: '32px'
             })
             .setInteractive()
@@ -591,23 +598,41 @@ var HighScore = new Phaser.Class({
         });
     },
     preload: function() {
-        this.load.setBaseURL('http://labs.phaser.io');
-        this.load.image('ksky', 'assets/skies/gradient11.png');
+        this.load.image('screen', 'assets/highScores.png');
     },
-    create: function() {
-        this.add.image(362, 362, 'ksky').setDisplaySize(724, 724);
+    create: async function() {
+        this.add.image(362, 362, 'screen').setDisplaySize(724, 724);
 
-        const alert = this.add.text(150, 100, 'HIGH SCORE', {
+        const alert = this.add.text(150, 100, 'HIGH SCORES', {
             fontSize: '50px'
         });
 
-        const clickButton = this.add.text(10, 10, 'Go Back', {
+        const clickButton = this.add.text(10, 20, 'Go Back', {
                 fontSize: '32px'
             })
             .setInteractive()
             .on('pointerdown', function(event) {
                 this.scene.start('mgame');
             }, this);
+
+        let scores = await ScoreManager.getScores();
+
+        function compare(a, b) {
+            if (a.score < b.score)
+                return 1;
+            else if (a.score > b.score)
+                return -1;
+            return 0;
+        }
+        scores.sort(compare);
+        scores = scores.slice(0, 10);
+
+        for (var i = 0; i < scores.length; i++) {
+            this.add.text(160, 160 + i * 50,
+                '' + (i + 1) + '. ' + scores[i].username + ' - ' + scores[i].score, {
+                    fontSize: '25px'
+                });
+        }
     },
     update: function() {}
 });
