@@ -1,6 +1,8 @@
 var Vector2 = Phaser.Math.Vector2;
 var Vector3 = Phaser.Math.Vector3;
 
+var theme = "";
+
 var GRID_SIZE = 32;
 var R = C = 22; // Rows, Columns
 
@@ -200,7 +202,7 @@ Food.prototype.update = function(phaser, snakes) {
     });
 }
 
-function Snake(x, y, sprite) {
+function Snake(x, y, sprite, normal) {
     this.alive = true;
     this.z = 1;
     this.getSprite = function() {
@@ -217,10 +219,10 @@ function Snake(x, y, sprite) {
         DOWN: new Vector2(0, 1)
     };
     this.keys = {
-        left: ["keydown_A", "keydown_J", "keydown_left"],
-        right: ["keydown_D", "keydown_L", "keydown_right"],
-        up: ["keydown_W", "keydown_I", "keydown_up"],
-        down: ["keydown_S", "keydown_K", "keydown_down"]
+        left: ["keydown_A", "keydown_J", "keydown_left", "keydown_F"],
+        right: ["keydown_D", "keydown_L", "keydown_right", "keydown_H"],
+        up: ["keydown_W", "keydown_I", "keydown_up", "keydown_T"],
+        down: ["keydown_S", "keydown_K", "keydown_down", "keydown_G"]
     };
     this.PERIOD = 7;
     this.headShade = "";
@@ -260,9 +262,6 @@ function Snake(x, y, sprite) {
                 snake.direction = snake.directions.DOWN;
             }
         })
-        phaser.input.keyboard.on("keydown_B", function() {
-            snake.addBody(phaser);
-        });
     }
     this.update = function(phaser) {
         let head = this.bodies[this.bodies.length - 1];
@@ -291,23 +290,48 @@ function Snake(x, y, sprite) {
                 this.timer++;
             }
             // Kill if out of bounds
-            if (head.pos.x < 10 || head.pos.x > 714 || head.pos.y < 10 || head.pos.y > 714) {
-                this.alive = false;
-            }
-            let h = head.pos,
-                S = GRID_SIZE / 2,
-                c = this.bodies;
-            // Check collision
-            for (var i = c.length - 1; i >= 2; i--) {
-                let b = c[i - 2].pos;
-                if (h.x + S > b.x - S && h.x - S < b.x + S &&
-                    h.y + S > b.y - S && h.y - S < b.y + S) {
-                    snakes[0].alive = false;
-                    snakes[1].alive = false;
-                }
+            this.killself();
+        }
+    }
+
+    this.killself = function(){
+        let head = this.bodies[this.bodies.length - 1];
+
+        if (head.pos.x < 10 || head.pos.x > 714 || head.pos.y < 10 || head.pos.y > 714) {
+            this.alive = false;
+        }
+
+        let h = head.pos,
+            S = GRID_SIZE / 2,
+            c = this.bodies;
+        // Check collision
+        for (var i = c.length - 1; i >= 2; i--) {
+            let b = c[i - 2].pos;
+            if (h.x + S > b.x - S && h.x - S < b.x + S &&
+                h.y + S > b.y - S && h.y - S < b.y + S) {
+                snakes[0].alive = false;
+                snakes[1].alive = false;
             }
         }
     }
+
+    this.kill = function(snake2){
+        let head = this.bodies[this.bodies.length - 1];
+        console.log(snake2);
+        let h = head.pos,
+            S = GRID_SIZE / 2,
+            c = snake2.bodies;
+        // Check collision
+        for (var i = c.length - 1; i >= 2; i--) {
+            let b = c[i - 2].pos;
+            if (this.z == snake2.z && h.x + S > b.x - S && h.x - S < b.x + S &&
+                h.y + S > b.y - S && h.y - S < b.y + S) {
+                snakes[0].alive = false;
+                snakes[1].alive = false;
+            }
+        }
+    }
+
     this.addBody = function(phaser) {
         let tail = this.bodies[0];
         let newBody = new Body(tail.coors.x, tail.coors.y, 0, 0, this.getSprite());
@@ -316,7 +340,7 @@ function Snake(x, y, sprite) {
     }
 }
 
-var snakes = [],
+    var snakes = [],
     food, portals = [],
     labels = [];
 
@@ -412,8 +436,100 @@ var Game = new Phaser.Class({
     create: async function() {
         this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
 
+        for (var i = 0; i < 1; i++) {
+            snakes.push(new Snake(1,i,'snake',true));
+            snakes[i].init(this, i);
+            labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
+                fontSize: '20px'
+            }));
+        }
+
+        food = new Food('food');
+        food.init(this);
+
+        generatePortals(this, 6);
+    },
+    update: async function() {
+        for (var i = 0; i < snakes.length; i++) {
+            labels[i].setText('Snake ' + (i + 1) + ' Score: ' + (snakes[i].bodies.length - 1));
+        }
+        if (snakes[0].alive) {
+            //console.log(snakes[0].alive);
+            food.update(this, snakes);
+            snakes.forEach(snake => {
+                snake.update(this);
+            });
+            portals.forEach(portal => {
+                portal.update(this, snakes);
+            });
+        } else {
+            this.scene.start('egame');
+
+            for(var i = 0; i < snakes.length; i++){
+                for(var j = 0; j < snakes[i].length;i++){
+                    snakes[i].bodies[j].body.destroy();
+                }
+                //console.log(snakes);
+            }
+            snakes.splice(0,snakes.length);
+            for(var i = 0; i < portals.length;i++){
+                portals[i].body.destroy();
+                //console.log(portals);
+            }
+            portals.splice(0,portals.length);
+            food = null;
+
+            snakes[0].alive = true;
+            //snakes[1].alive = true;
+        }
+    }
+});
+
+var DoubleGame = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function() {
+        Phaser.Scene.call(this, {
+            key: 'doublegame'
+        });
+    },
+
+    preload: function() {
+        this.load.image('sky', 'assets/grid.png');
+        this.load.image('snake', 'assets/blue.png');
+        this.load.image('food', 'assets/blueLight.png');
+        this.load.image('portal', 'assets/bluePortal.png');
+
+        this.load.image('sky', 'assets/skies/underwater1.png');
+        this.load.image('snake1', 'assets/purple.png');
+        this.load.image('snake1Light', 'assets/purpleLight.png');
+        this.load.image('snake1Dark', 'assets/purpleDark.png');
+        this.load.image('snake2', 'assets/blue.png');
+        this.load.image('snake2Light', 'assets/blueLight.png');
+        this.load.image('snake2Dark', 'assets/blueDark.png');
+        this.load.image('snake3', 'assets/green.png');
+        this.load.image('snake3Light', 'assets/greenLight.png');
+        this.load.image('snake3Dark', 'assets/greenDark.png');
+        this.load.image('snake4', 'assets/yellow.png');
+        this.load.image('snake4Light', 'assets/yellowLight.png');
+        this.load.image('snake4Dark', 'assets/yellowDark.png');
+        this.load.image('snake5', 'assets/orange.png');
+        this.load.image('snake5Light', 'assets/orangeLight.png');
+        this.load.image('snake5Dark', 'assets/orangeDark.png');
+        this.load.image('snake6', 'assets/red.png');
+        this.load.image('snake6Light', 'assets/redLight.png');
+        this.load.image('snake6Dark', 'assets/redDark.png');
+        this.load.image('portal1', 'assets/purplePortal.png');
+        this.load.image('portal2', 'assets/bluePortal.png');
+        this.load.image('portal3', 'assets/greenPortal.png');
+        this.load.image('portal4', 'assets/yellowPortal.png');
+        this.load.image('portal5', 'assets/orangePortal.png');
+        this.load.image('portal6', 'assets/redPortal.png');
+    },
+    create: async function() {
+        this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
+
         for (var i = 0; i < 2; i++) {
-            snakes.push(new Snake(1,i,'snake'));
+            snakes.push(new Snake(1,i,'snake',true));
             snakes[i].init(this, i);
             labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
                 fontSize: '20px'
@@ -438,16 +554,120 @@ var Game = new Phaser.Class({
             portals.forEach(portal => {
                 portal.update(this, snakes);
             });
+            snakes[0].kill(snakes[1]);
         } else {
             this.scene.start('egame');
 
-            snakes = [];
+            for(var i = 0; i < snakes.length; i++){
+                for(var j = 0; j < snakes[i].length;i++){
+                    snakes[i].bodies[j].body.destroy();
+                }
+                //console.log(snakes);
+            }
+            snakes.splice(0,snakes.length);
+            for(var i = 0; i < portals.length;i++){
+                portals[i].body.destroy();
+                //console.log(portals);
+            }
+            portals.splice(0,portals.length);
             food = null;
-
-            this.create();
 
             snakes[0].alive = true;
             snakes[1].alive = true;
+        }
+    }
+});
+
+var CoGame = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function() {
+        Phaser.Scene.call(this, {
+            key: 'cogame'
+        });
+    },
+
+    preload: function() {
+        this.load.image('sky', 'assets/grid.png');
+        this.load.image('snake', 'assets/blue.png');
+        this.load.image('food', 'assets/blueLight.png');
+        this.load.image('portal', 'assets/bluePortal.png');
+
+        this.load.image('sky', 'assets/skies/underwater1.png');
+        this.load.image('snake1', 'assets/purple.png');
+        this.load.image('snake1Light', 'assets/purpleLight.png');
+        this.load.image('snake1Dark', 'assets/purpleDark.png');
+        this.load.image('snake2', 'assets/blue.png');
+        this.load.image('snake2Light', 'assets/blueLight.png');
+        this.load.image('snake2Dark', 'assets/blueDark.png');
+        this.load.image('snake3', 'assets/green.png');
+        this.load.image('snake3Light', 'assets/greenLight.png');
+        this.load.image('snake3Dark', 'assets/greenDark.png');
+        this.load.image('snake4', 'assets/yellow.png');
+        this.load.image('snake4Light', 'assets/yellowLight.png');
+        this.load.image('snake4Dark', 'assets/yellowDark.png');
+        this.load.image('snake5', 'assets/orange.png');
+        this.load.image('snake5Light', 'assets/orangeLight.png');
+        this.load.image('snake5Dark', 'assets/orangeDark.png');
+        this.load.image('snake6', 'assets/red.png');
+        this.load.image('snake6Light', 'assets/redLight.png');
+        this.load.image('snake6Dark', 'assets/redDark.png');
+        this.load.image('portal1', 'assets/purplePortal.png');
+        this.load.image('portal2', 'assets/bluePortal.png');
+        this.load.image('portal3', 'assets/greenPortal.png');
+        this.load.image('portal4', 'assets/yellowPortal.png');
+        this.load.image('portal5', 'assets/orangePortal.png');
+        this.load.image('portal6', 'assets/redPortal.png');
+    },
+    create: async function() {
+        this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
+
+        for (var i = 0; i < 1; i++) {
+            snakes.push(new Snake(1,i,'snake',false));
+            snakes[i].init(this, i);
+            labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
+                fontSize: '20px'
+            }));
+        }
+
+        food = new Food('food');
+        food.init(this);
+
+        generatePortals(this, 6);
+    },
+    update: async function() {
+        for (var i = 0; i < snakes.length; i++) {
+            labels[i].setText('Snake ' + (i + 1) + ' Score: ' + (snakes[i].bodies.length - 1));
+        }
+        if (snakes[0].alive) {
+            //console.log(snakes[0].alive);
+            food.update(this, snakes);
+            snakes.forEach(snake => {
+                snake.update(this);
+            });
+            portals.forEach(portal => {
+                portal.update(this, snakes);
+            });
+        } else {
+            this.scene.start('egame');
+
+            this.scene.start('egame');
+
+            for(var i = 0; i < snakes.length; i++){
+                for(var j = 0; j < snakes[i].length;i++){
+                    snakes[i].bodies[j].body.destroy();
+                }
+                //console.log(snakes);
+            }
+            snakes.splice(0,snakes.length);
+            for(var i = 0; i < portals.length;i++){
+                portals[i].body.destroy();
+                //console.log(portals);
+            }
+            portals.splice(0,portals.length);
+            food = null;
+
+            snakes[0].alive = true;
+            //snakes[1].alive = true;
         }
     }
 });
@@ -565,16 +785,30 @@ var Settings = new Phaser.Class({
     create: function() {
         this.add.image(362, 362, 'ksky').setDisplaySize(724, 724);
 
-        const alert = this.add.text(150, 100, 'Settings', {
+        const alert = this.add.text(130, 50, 'Choose Game Type', {
             fontSize: '50px'
         });
 
-        const clickButton = this.add.text(10, 10, 'Play!', {
+        const clickGame = this.add.text(200, 150, 'Play Single Player!', {
                 fontSize: '32px'
             })
             .setInteractive()
             .on('pointerdown', function(event) {
                 this.scene.start('game');
+            }, this);
+        const clickDouble = this.add.text(230, 300, 'Play 2 Player!', {
+                fontSize: '32px'
+            })
+            .setInteractive()
+            .on('pointerdown', function(event) {
+                this.scene.start('doublegame');
+            }, this);
+        const clickCo = this.add.text(260, 450, 'Play CoOP!', {
+                fontSize: '32px'
+            })
+            .setInteractive()
+            .on('pointerdown', function(event) {
+                this.scene.start('cogame');
             }, this);
     },
     update: function() {}
@@ -588,7 +822,7 @@ var config = {
         default: 'arcade',
         arcade: {}
     },
-    scene: [MainMenu, Settings, HighScore, Game, GameOver]
+    scene: [MainMenu, Settings, HighScore, Game, GameOver, DoubleGame, CoGame]
 };
 
 var game = new Phaser.Game(config);
