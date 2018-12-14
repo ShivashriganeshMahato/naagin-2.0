@@ -4,6 +4,7 @@ var Vector3 = Phaser.Math.Vector3;
 var music;
 
 var theme = "";
+var gameMode = "";
 
 var GRID_SIZE = 32;
 var R = C = 22; // Rows, Columns
@@ -258,10 +259,10 @@ function Snake(x, y, sprite, normal) {
         DOWN: new Vector2(0, 1)
     };
     this.keys = {
-        left: ["keydown_A", "keydown_J", "keydown_left", "keydown_F"],
-        right: ["keydown_D", "keydown_L", "keydown_right", "keydown_H"],
-        up: ["keydown_W", "keydown_I", "keydown_up", "keydown_T"],
-        down: ["keydown_S", "keydown_K", "keydown_down", "keydown_G"]
+        left: ["keydown_A", "keydown_J", "keydown_F"],
+        right: ["keydown_D", "keydown_L", "keydown_H"],
+        up: ["keydown_W", "keydown_I", "keydown_T"],
+        down: ["keydown_S", "keydown_K", "keydown_G"]
     };
     this.PERIOD = 7;
     this.headShade = "";
@@ -384,10 +385,10 @@ function Snake(x, y, sprite, normal) {
     }
 }
 
-    var snakes = [],
-    food, portals = [],
-    labels = [],
-    levelSprites = [];
+var snakes = [],
+food, portals = [],
+labels = [],
+levelSprites = [];
 
 function generatePortals(phaser, levels) {
     let positions = [];
@@ -495,7 +496,16 @@ var Game = new Phaser.Class({
 
         this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
 
-        for (var i = 0; i < 1; i++) {
+        this.add.image(650, 90, 'mapBack').setDisplaySize(80, 128);
+        for (var i = 6; i >= 1; i--) {
+            levelSprites.push(this.add.image(650, 90, 'level' + i).setDisplaySize(80, 128));
+            if (i !== 1)
+                levelSprites[6 - i].visible = false;
+        }
+        this.add.image(650, 90, 'mapFront').setDisplaySize(80, 128);
+
+        for (var i = 0; i < (gameMode === "Double" ? 2 : 1); i++) {
+            console.log(i);
             snakes.push(new Snake(1,i,'snake',true));
             snakes[i].init(this, i);
             labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
@@ -538,210 +548,7 @@ var Game = new Phaser.Class({
             portals.splice(0,portals.length);
             food = null;
 
-            snakes[0].alive = true;
-            //snakes[1].alive = true;
-        }
-    }
-});
-
-var DoubleGame = new Phaser.Class({
-    Extends: Phaser.Scene,
-    initialize: function() {
-        Phaser.Scene.call(this, {
-            key: 'doublegame'
-        });
-    },
-
-    preload: function() {
-        this.load.image('sky', 'assets/grid.png');
-        this.load.image('snake', 'assets/blue.png');
-        this.load.image('food', 'assets/blueLight.png');
-        this.load.image('portal', 'assets/bluePortal.png');
-
-        this.load.image('sky', 'assets/skies/underwater1.png');
-        this.load.image('snake1', 'assets/purple.png');
-        this.load.image('snake1Light', 'assets/purpleLight.png');
-        this.load.image('snake1Dark', 'assets/purpleDark.png');
-        this.load.image('snake2', 'assets/blue.png');
-        this.load.image('snake2Light', 'assets/blueLight.png');
-        this.load.image('snake2Dark', 'assets/blueDark.png');
-        this.load.image('snake3', 'assets/green.png');
-        this.load.image('snake3Light', 'assets/greenLight.png');
-        this.load.image('snake3Dark', 'assets/greenDark.png');
-        this.load.image('snake4', 'assets/yellow.png');
-        this.load.image('snake4Light', 'assets/yellowLight.png');
-        this.load.image('snake4Dark', 'assets/yellowDark.png');
-        this.load.image('snake5', 'assets/orange.png');
-        this.load.image('snake5Light', 'assets/orangeLight.png');
-        this.load.image('snake5Dark', 'assets/orangeDark.png');
-        this.load.image('snake6', 'assets/red.png');
-        this.load.image('snake6Light', 'assets/redLight.png');
-        this.load.image('snake6Dark', 'assets/redDark.png');
-        this.load.image('portal1', 'assets/purplePortal.png');
-        this.load.image('portal2', 'assets/bluePortal.png');
-        this.load.image('portal3', 'assets/greenPortal.png');
-        this.load.image('portal4', 'assets/yellowPortal.png');
-        this.load.image('portal5', 'assets/orangePortal.png');
-        this.load.image('portal6', 'assets/redPortal.png');
-    },
-    create: async function() {
-        this.add.image(650, 90, 'mapBack').setDisplaySize(80, 128);
-        for (var i = 6; i >= 1; i--) {
-            levelSprites.push(this.add.image(650, 90, 'level' + i).setDisplaySize(80, 128));
-            if (i !== 1)
-                levelSprites[6 - i].visible = false;
-        }
-        this.add.image(650, 90, 'mapFront').setDisplaySize(80, 128);
-
-        for (var i = 0; i < 2; i++) {
-            snakes.push(new Snake(1, i, 'snake'));
-            snakes[i].init(this, i);
-            labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
-                fontSize: '20px'
-            }));
-        }
-
-        food = new Food('food');
-        food.init(this);
-
-        generatePortals(this, 6);
-    },
-    update: async function() {
-        for (var i = 0; i < snakes.length; i++) {
-            labels[i].setText('Snake ' + (i + 1) + ' Score: ' + (snakes[i].bodies.length - 1));
-        }
-        if (snakes[0].alive && snakes[1].alive) {
-            //console.log(snakes[0].alive);
-            food.update(this, snakes);
-            snakes.forEach(snake => {
-                snake.update(this);
-            });
-            portals.forEach(portal => {
-                portal.update(this, snakes);
-            });
-            snakes[0].kill(snakes[1]);
-        } else {
-            snakes.forEach(snake => {
-                snake.destroy();
-            });
-            portals.forEach(snake => {
-                snake.body.destroy();
-            });
-
-            ScoreManager.score = Math.max(snakes[0].bodies.length - 1,
-                snakes[1].bodies.length - 1);
-            $('#scoreForm').removeClass('d-none');
-            this.scene.start('egame');
-
-            for(var i = 0; i < snakes.length; i++){
-                for(var j = 0; j < snakes[i].length;i++){
-                    snakes[i].bodies[j].body.destroy();
-                }
-                //console.log(snakes);
-            }
-            snakes.splice(0,snakes.length);
-            for(var i = 0; i < portals.length;i++){
-                portals[i].body.destroy();
-                //console.log(portals);
-            }
-            portals.splice(0,portals.length);
-            food = null;
-
-            snakes[0].alive = true;
-            snakes[1].alive = true;
-        }
-    }
-});
-
-var CoGame = new Phaser.Class({
-    Extends: Phaser.Scene,
-    initialize: function() {
-        Phaser.Scene.call(this, {
-            key: 'cogame'
-        });
-    },
-
-    preload: function() {
-        this.load.image('sky', 'assets/grid.png');
-        this.load.image('snake', 'assets/blue.png');
-        this.load.image('food', 'assets/blueLight.png');
-        this.load.image('portal', 'assets/bluePortal.png');
-
-        this.load.image('sky', 'assets/skies/underwater1.png');
-        this.load.image('snake1', 'assets/purple.png');
-        this.load.image('snake1Light', 'assets/purpleLight.png');
-        this.load.image('snake1Dark', 'assets/purpleDark.png');
-        this.load.image('snake2', 'assets/blue.png');
-        this.load.image('snake2Light', 'assets/blueLight.png');
-        this.load.image('snake2Dark', 'assets/blueDark.png');
-        this.load.image('snake3', 'assets/green.png');
-        this.load.image('snake3Light', 'assets/greenLight.png');
-        this.load.image('snake3Dark', 'assets/greenDark.png');
-        this.load.image('snake4', 'assets/yellow.png');
-        this.load.image('snake4Light', 'assets/yellowLight.png');
-        this.load.image('snake4Dark', 'assets/yellowDark.png');
-        this.load.image('snake5', 'assets/orange.png');
-        this.load.image('snake5Light', 'assets/orangeLight.png');
-        this.load.image('snake5Dark', 'assets/orangeDark.png');
-        this.load.image('snake6', 'assets/red.png');
-        this.load.image('snake6Light', 'assets/redLight.png');
-        this.load.image('snake6Dark', 'assets/redDark.png');
-        this.load.image('portal1', 'assets/purplePortal.png');
-        this.load.image('portal2', 'assets/bluePortal.png');
-        this.load.image('portal3', 'assets/greenPortal.png');
-        this.load.image('portal4', 'assets/yellowPortal.png');
-        this.load.image('portal5', 'assets/orangePortal.png');
-        this.load.image('portal6', 'assets/redPortal.png');
-    },
-    create: async function() {
-        this.add.image(362, 362, 'sky').setDisplaySize(724, 724);
-
-        for (var i = 0; i < 1; i++) {
-            snakes.push(new Snake(1,i,'snake',false));
-            snakes[i].init(this, i);
-            labels.push(this.add.text(30, 100 + 40 * i, 'Score: 0', {
-                fontSize: '20px'
-            }));
-        }
-
-        food = new Food('food');
-        food.init(this);
-
-        generatePortals(this, 6);
-    },
-    update: async function() {
-        for (var i = 0; i < snakes.length; i++) {
-            labels[i].setText('Snake ' + (i + 1) + ' Score: ' + (snakes[i].bodies.length - 1));
-        }
-        if (snakes[0].alive) {
-            //console.log(snakes[0].alive);
-            food.update(this, snakes);
-            snakes.forEach(snake => {
-                snake.update(this);
-            });
-            portals.forEach(portal => {
-                portal.update(this, snakes);
-            });
-        } else {
-            this.scene.start('egame');
-
-            this.scene.start('egame');
-
-            for(var i = 0; i < snakes.length; i++){
-                for(var j = 0; j < snakes[i].length;i++){
-                    snakes[i].bodies[j].body.destroy();
-                }
-                //console.log(snakes);
-            }
-            snakes.splice(0,snakes.length);
-            for(var i = 0; i < portals.length;i++){
-                portals[i].body.destroy();
-                //console.log(portals);
-            }
-            portals.splice(0,portals.length);
-            food = null;
-
-            snakes[0].alive = true;
+            // snakes[0].alive = true;
             //snakes[1].alive = true;
         }
     }
@@ -877,11 +684,10 @@ var Settings = new Phaser.Class({
         });
     },
     preload: function() {
-        this.load.setBaseURL('http://labs.phaser.io');
-        this.load.image('ksky', 'assets/skies/gradient11.png');
+        this.load.image('screen', 'assets/highScores.png');
     },
     create: function() {
-        this.add.image(362, 362, 'ksky').setDisplaySize(724, 724);
+        this.add.image(362, 362, 'screen').setDisplaySize(724, 724);
 
         const alert = this.add.text(130, 50, 'Choose Game Type', {
             fontSize: '50px'
@@ -892,6 +698,7 @@ var Settings = new Phaser.Class({
             })
             .setInteractive()
             .on('pointerdown', function(event) {
+                gameMode = "Single";
                 this.scene.start('game');
             }, this);
         const clickDouble = this.add.text(230, 300, 'Play 2 Player!', {
@@ -899,15 +706,17 @@ var Settings = new Phaser.Class({
             })
             .setInteractive()
             .on('pointerdown', function(event) {
-                this.scene.start('doublegame');
+                gameMode = "Double";
+                this.scene.start('game');
             }, this);
-        const clickCo = this.add.text(260, 450, 'Play CoOP!', {
-                fontSize: '32px'
-            })
-            .setInteractive()
-            .on('pointerdown', function(event) {
-                this.scene.start('cogame');
-            }, this);
+        // const clickCo = this.add.text(260, 450, 'Play CoOP!', {
+        //         fontSize: '32px'
+        //     })
+        //     .setInteractive()
+        //     .on('pointerdown', function(event) {
+        //         gameMode = "Coop";
+        //         this.scene.start('game');
+        //     }, this);
     },
     update: function() {}
 });
@@ -920,7 +729,7 @@ var config = {
         default: 'arcade',
         arcade: {}
     },
-    scene: [MainMenu, Settings, HighScore, Game, GameOver, DoubleGame, CoGame]
+    scene: [MainMenu, Settings, HighScore, Game, GameOver]
 };
 
 var game = new Phaser.Game(config);
